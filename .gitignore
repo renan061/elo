@@ -1,0 +1,16 @@
+test.elo
+
+bin/*
+
+*.bc
+*.cmi
+*.cmo
+*.cmx
+*.ll
+*.o
+*.out
+
+parser.conflicts
+parser.ml
+parser.mli
+scanner.ml

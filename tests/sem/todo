@@ -1,0 +1,6 @@
+FUNCTION main
+    RETURNS => VOID
+    PARAMETERS =>
+        DEF VAL ARGS : [STRING]
+        DEF VAL ARGC : INT
+    BLOCK => {}
