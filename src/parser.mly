@@ -12,8 +12,8 @@
 %token <Lexing.position> ASGADD "+=" ASGMIN "-=" ASGMUL "*=" ASGDIV "/="
 
 %token <Lexing.position> NOT AND OR
-%token <Lexing.position> VAL VAR
-%token <Lexing.position> FUNCTION
+%token <Lexing.position> VAL "val" VAR "var"
+%token <Lexing.position> FUNCTION "function"
 
 %token <Lexing.position * string> LID UID
 
@@ -38,10 +38,10 @@ def : variable_def { $1 }
 
 variable_def : val_def { $1 } | var_def { $1 }
 
-val_def : VAL LID sctype? "=" exp  ";"            { Val ($1, $2, $3, $5) }
-var_def : VAR LID sctype? preceded("=", exp)? ";" { Var ($1, $2, $3, $4) }
+val_def : "val" LID typedec?          "="  exp   ";" { Val ($1, $2, $3, $5) }
+var_def : "var" LID typedec? preceded("=", exp)? ";" { Var ($1, $2, $3, $4) }
 
-function_def : FUNCTION LID params sctype? block { Fun ($1, $2, $3, $4, $5) }
+function_def : "function" LID params typedec? block { Fun ($1, $2, $3, $4, $5) }
 
 block : "{" block_elem* "}" { $2 }
 
@@ -72,8 +72,9 @@ lhs : LID             { Id $1                }
 params : /* empty */                                 { [] }
        | "(" separated_nonempty_list(",", param) ")" { $2 }
 
-param : LID sctype { Val (fst $1, $1, Some $2, Dynamic $2) }
+param : LID typedec { Val (fst $1, $1, Some $2, Dynamic $2) }
 
-sctype : ":" typ { $2 }
+/* type declaration */
+typedec : ":" typ { $2 }
 
 %%

@@ -120,9 +120,7 @@ and string_literal buf = parse
 (* -------------------------------------------------------------------------- *)
 
 {
-    let setup file =
-        let ic = (open_in file) in
-        (Lexing.from_channel ic, ic)
+    let setup file = let ic = (open_in file) in (Lexing.from_channel ic, ic)
         
     let teardown = close_in
 }

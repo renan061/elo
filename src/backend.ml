@@ -23,27 +23,28 @@ module IR = struct
     let ptrAnyT = ptrT (Llvm.i8_type ctx)
 
     (* elo types *)
-    let voidAT    = Llvm.void_type ctx
-    let boolAT    = Llvm.i1_type ctx
-    let int32AT   = Llvm.i32_type ctx
-    let float32AT = Llvm.float_type ctx
-    let stringAT  = ptrAnyT
+    let voidET    = Llvm.void_type ctx
+    let boolET    = Llvm.i1_type ctx
+    let int32ET   = Llvm.i32_type ctx
+    let float32ET = Llvm.float_type ctx
+    let stringET  = ptrAnyT
     (* arrayT *)
 
     let type_from = function
-        | Void    -> voidAT
-        | Bool    -> boolAT
-        | Int     -> int32AT
-        | Float   -> float32AT
-        | String  -> stringAT
+        | Void    -> voidET
+        | Bool    -> boolET
+        | Int     -> int32ET
+        | Float   -> float32ET
+        | String  -> stringET
         | Array _ -> raise NotImplemented
 
-    let voidAV    = Llvm.const_null voidAT
-    let trueAV    = Llvm.const_int boolAT 1
-    let falseAV   = Llvm.const_int boolAT 0
-    let int32AV   = Llvm.const_int int32AT
-    let float32AV = Llvm.const_float float32AT
-    let stringAV  = Llvm.const_string ctx (* TODO: bitcast to stringAT *)
+    (* elo values *)
+    let voidEV    = Llvm.const_null voidET
+    let trueEV    = Llvm.const_int boolET 1
+    let falseEV   = Llvm.const_int boolET 0
+    let int32EV   = Llvm.const_int int32ET
+    let float32EV = Llvm.const_float float32ET
+    let stringEV  = Llvm.const_string ctx (* TODO: bitcast to stringET *)
 
     let zero_value typ = Llvm.const_null (type_from typ)
 end
@@ -99,11 +100,11 @@ and backend_local_var irs def = match def.u with
 and backend_exp irs {pos; typ; u} = match u with
     | Dynamic           -> raise ErrDynamicExp
     | ZeroValue         -> IR.zero_value typ
-    | LiteralTrue       -> IR.trueAV
-    | LiteralFalse      -> IR.falseAV
-    | LiteralInt    v   -> IR.int32AV   v
-    | LiteralFloat  v   -> IR.float32AV v
-    | LiteralString v   -> IR.stringAV  v
+    | LiteralTrue       -> IR.trueEV
+    | LiteralFalse      -> IR.falseEV
+    | LiteralInt    v   -> IR.int32EV   v
+    | LiteralFloat  v   -> IR.float32EV v
+    | LiteralString v   -> IR.stringEV  v
     | Lhs {pos; typ; u} -> (match u with
         | Id (_, def) -> (match def.u with
             | Val _ -> def.llv
