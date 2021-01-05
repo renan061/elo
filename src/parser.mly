@@ -1,5 +1,5 @@
 %{
-    open Ast1
+  open Ast1
 %}
 
 %token <Lexing.position> LPAR "(" RPAR ")"

@@ -2,9 +2,8 @@
 
 open Ast1
 
-(* if Array.length Sys.argv < 1 ERROR *)
-
-let main () =
+let _ =
+    (* if Array.length Sys.argv < 1 ERROR *)
     let input = Sys.argv.(1) in
     let (lexbuf, ic) = Scanner.setup input in
     let ast1 = Parser.program Scanner.scan lexbuf in
@@ -16,6 +15,3 @@ let main () =
         List.hd l ^ ".bc"
     in
     Llvm_bitwriter.write_bitcode_file m output
-;;
-
-main ()
