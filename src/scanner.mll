@@ -49,7 +49,7 @@ rule scan = parse
   | ',' { COMMA     (p lexbuf) }
   | ':' { COLON     (p lexbuf) }
   | ';' { SEMICOLON (p lexbuf) }
-
+(*
   | '<' { LT    (p lexbuf) }
   | '>' { GT    (p lexbuf) }
   | '+' { PLUS  (p lexbuf) }
@@ -73,7 +73,7 @@ rule scan = parse
   | "not" { NOT (p lexbuf) }
   | "and" { AND (p lexbuf) }
   | "or"  { OR  (p lexbuf) }
-
+*)
   | "var"      { VAR      (p lexbuf) }
   | "val"      { VAL      (p lexbuf) }
   | "function" { FUNCTION (p lexbuf) }

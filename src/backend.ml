@@ -81,7 +81,6 @@ and backend_block irs block =
   let f = function
     | V v -> backend_local_var irs v
     | S s -> raise NotImplemented
-    | _ -> raise (ErrBackend "block._")
   in
   List.iter f block
 
@@ -92,7 +91,7 @@ and backend_local_var irs def = match def.u with
   | Var exp ->
     let v = backend_exp irs exp in
     let p = Llvm.build_alloca (IR.type_from def.typ) IR.tmp irs.b in
-    Llvm.build_store v p irs.b;
+    let _ = Llvm.build_store v p irs.b in
     def.llv <- p
 
   | _ -> raise (ErrBackend "var._")

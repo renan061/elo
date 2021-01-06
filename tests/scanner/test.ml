@@ -16,30 +16,30 @@ let tests = [
         "multiline comments",
         {|
             /**/ /******/
-            /* something */ and
+            /* something */ a
             /*
                 line one
                 // single line commentary
                 line two
             */
-            /*or*/ or/**/
-            not
+            /*and*/ b/**/
+            C
             /*something123"string inside commentary"more*/
             /* can /* nest /* comments */*/*/
             end
         |},
         [
-            "AND"; "OR"; "NOT"; "LID(end)"
+            "LID(a)"; "LID(b)"; "UID(C)"; "LID(end)"
         ]
     ); (
         "multiline comment (EOF)",
         {|
-            file...
+            things morethings
             /*
             end
         |},
         [
-            "LID(file)"; "."; "."; "."; "InvalidCommentEOF"
+            "LID(things)"; "LID(morethings)"; "InvalidCommentEOF"
         ]
     ); (
         "multiline comment (nested)",
@@ -56,36 +56,36 @@ let tests = [
         "characters",
         {|
             ( ) [ ] { }
-            = . , : ;
-            < > + - * /
+            = /* TODO .*/ , : ;
+            /* TODO < > + - * / */
         |},
         [
             "("; ")"; "["; "]"; "{"; "}";
-            "="; "."; ","; ":"; ";";
-            "<"; ">"; "+"; "-"; "*"; "/";
+            "="; (*"."; *)","; ":"; ";";
+            (*"<"; ">"; "+"; "-"; "*"; "/";*)
         ]
     ); (
         "special tokens",
-        {|
+        {|/* TODO
             == !=
             <- -> <= =>
             += -= *= /=
-        |},
-        [
+        */|},
+        [(*
             "=="; "!=";
             "<-"; "->"; "<="; "=>";
             "+="; "-="; "*="; "/=";
-        ]
+        *)]
     ); (
         "keywords",
         {|
-            not and or
+            /* TODO not and or */
             var val
             function
             true false
         |},
         [
-            "NOT"; "AND"; "OR";
+            (* "NOT"; "AND"; "OR"; *)
             "VAR"; "VAL";
             "FUNCTION";
             "TRUE"; "FALSE";
@@ -125,7 +125,7 @@ let tests = [
         {|
 
             029124905d1233
-            105+1233
+            105]1233
             a94812)746
             0. .1 .2.
             3..4 5.6. .7.8
@@ -134,7 +134,7 @@ let tests = [
         |},
         [
             "INT(29124905)"; "LID(d1233)";
-            "INT(105)"; "+"; "INT(1233)";
+            "INT(105)"; "]"; "INT(1233)";
             "LID(a94812)"; ")"; "INT(746)";
             "INT(0)"; "."; "."; "INT(1)"; "."; "INT(2)"; ".";
             "INT(3)"; "."; "."; "INT(4)"; "FLOAT(5.6)"; "."; "."; "FLOAT(7.8)";
@@ -243,7 +243,7 @@ let step lexbuf = match Scanner.scan lexbuf with
     | COMMA     _ -> ","
     | COLON     _ -> ":"
     | SEMICOLON _ -> ";"
-
+(*
     | LT    _ -> "<"
     | GT    _ -> ">"
     | PLUS  _ -> "+"
@@ -267,7 +267,7 @@ let step lexbuf = match Scanner.scan lexbuf with
     | NOT _ -> "NOT"
     | AND _ -> "AND"
     | OR  _ -> "OR"
-
+*)
     | VAR      _ -> "VAR"
     | VAL      _ -> "VAL"
     | FUNCTION _ -> "FUNCTION"

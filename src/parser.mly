@@ -6,12 +6,14 @@
 %token <Lexing.position> LBRACKET "[" RBRACKET "]"
 %token <Lexing.position> LBRACE "{" RBRACE "}"
 %token <Lexing.position> ASG "=" DOT "." COMMA "," COLON ":" SEMICOLON ";"
+/*
 %token <Lexing.position> LT "<" GT ">" PLUS "+" MINUS "-" MUL "*" DIV "/"
 %token <Lexing.position> EQUALS "==" NEQUALS "!="
 %token <Lexing.position> LARROW "<-" RARROW "->" LEARROW "<=" REARROW "=>"
 %token <Lexing.position> ASGADD "+=" ASGMIN "-=" ASGMUL "*=" ASGDIV "/="
 
 %token <Lexing.position> NOT AND OR
+*/
 %token <Lexing.position> VAL "val" VAR "var"
 %token <Lexing.position> FUNCTION "function"
 

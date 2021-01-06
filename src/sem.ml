@@ -159,12 +159,12 @@ and sem_exp exp = match exp with
 and sem_lhs lhs = match lhs with
   | Id (pos, id2 as id1) ->
     let def = match st#lookup id2 with
-      | None     -> raise @@ ErrUndefinedVariable id1
+      | None     -> raise (ErrUndefinedVariable id1)
       | Some def -> def
     in
     let _ = match def.u with
       | Val _ | Var _ -> ()
-      | _             -> raise @@ ErrInvalidVariable id1
+      | _             -> raise (ErrInvalidVariable id1)
     in
     {pos = pos; typ = def.typ; u = Id (id2, def)}
 
