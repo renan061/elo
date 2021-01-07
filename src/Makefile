@@ -21,7 +21,7 @@ scanner: parser
 	ocamlopt parser.cmx scanner.ml
 
 parser: ast1
-	menhir --unused-token INVALID parser.mly
+	menhir --unused-token INVALID --explain parser.mly
 	ocamlopt ast1.cmx parser.mli parser.ml
 
 ast1:

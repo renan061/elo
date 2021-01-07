@@ -49,7 +49,7 @@ rule scan = parse
   | ',' { COMMA     (p lexbuf) }
   | ':' { COLON     (p lexbuf) }
   | ';' { SEMICOLON (p lexbuf) }
-(*
+
   | '<' { LT    (p lexbuf) }
   | '>' { GT    (p lexbuf) }
   | '+' { PLUS  (p lexbuf) }
@@ -59,21 +59,25 @@ rule scan = parse
 
   | "==" { EQUALS  (p lexbuf) }
   | "!=" { NEQUALS (p lexbuf) }
-
-  | "<-" { LARROW  (p lexbuf) }
-  | "->" { RARROW  (p lexbuf) }
-  | "<=" { LEARROW (p lexbuf) }
-  | "=>" { REARROW (p lexbuf) }
-
+(*
+  | "<-" { LTMIN (p lexbuf) }
+  | "->" { MINGT (p lexbuf) }
+*)
+  | "<=" { LTEQ  (p lexbuf) }
+(*
+  | "=>" { EQGT  (p lexbuf) }
+*)
+  | ">=" { GTEQ  (p lexbuf) }
+(*
   | "+=" { ASGADD (p lexbuf) }
   | "-=" { ASGMIN (p lexbuf) }
   | "*=" { ASGMUL (p lexbuf) }
   | "/=" { ASGDIV (p lexbuf) }
-
+*)
   | "not" { NOT (p lexbuf) }
   | "and" { AND (p lexbuf) }
   | "or"  { OR  (p lexbuf) }
-*)
+
   | "var"      { VAR      (p lexbuf) }
   | "val"      { VAL      (p lexbuf) }
   | "function" { FUNCTION (p lexbuf) }

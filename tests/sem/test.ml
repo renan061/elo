@@ -56,8 +56,8 @@ let tests = [(
 (* -------------------------------------------------------------------------- *)
   "function definition - ok", {|
     function main(args: [String]) {
-      val name = args[0];
-      val options = args[1];
+      val name = "name";
+      val options = "options";
     }
   |}, {|
     DEF FUNCTION main : VOID
@@ -67,13 +67,9 @@ let tests = [(
       )
     {
       DEF VAL name : STRING =
-        INDEXED: STRING
-        ARRAY => ID args: [STRING]
-        INDEX => INT(0)
+        STRING("name")
       DEF VAL options : STRING =
-        INDEXED: STRING
-        ARRAY => ID args: [STRING]
-        INDEX => INT(1)
+        STRING("options")
     }
   (*-----------------------------------------------------------------*) |}); (
   "function definition - no parameters", {|
