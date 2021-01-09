@@ -45,11 +45,9 @@ and exp =
   | Call    of call
 
 and call =
-  | Function of id * exp list
-  (*
+  | Function    of id * exp list
   | Method      of exp * id * exp list
   | Constructor of typ * exp list
-  *)
 
 and literal =
   | True   of p

@@ -9,7 +9,7 @@
 %token <Lexing.position> OR "or" AND "and" NOT "not"
 %token <Lexing.position> EQ "==" NEQ "!="
 %token <Lexing.position> LARROW "<-" RARROW "->"
-%token <Lexing.position> LT "<" GT ">" LTEQ "<=" EQGT "=>" GTEQ ">=" 
+%token <Lexing.position> LT "<" GT ">" LTEQ "<=" EQGT "=>" GTEQ ">="
 %token <Lexing.position> ADD "+" MIN "-" MUL "*" DIV "/"
 %token <Lexing.position> ASGADD "+=" ASGMIN "-=" ASGMUL "*=" ASGDIV "/="
 %token <Lexing.position> RETURN "return"
@@ -91,35 +91,39 @@ else_  : "else"       block { $2       }
 
 (* -------------------------------------------------------------------------- *)
 
-exp : exp binop exp       { Binary  ($1, $2, $3) }
-    | "not" exp           { Unary   (Not, $2)    }
-    | "-"   exp %prec NOT { Unary   (Min, $2)    }
-    | primitive_literal   { Literal $1           }
-    | lhs                 { Lhs     $1           }
-    | call                { Call    $1           }
-    | "(" exp ")"         { $2                   }
-%inline binop : "or"    { Or                   }
-              | "and"   { And                  }
-              | "=="    { Equal                }
-              | "!="    { NotEqual             }
-              | "<="    { LessThanOrEqual      }
-              | ">="    { GreaterThanOrEqual   }
-              | "<"     { LessThan             }
-              | ">"     { GreaterThan          }
-              | "+"     { Add                  }
-              | "-"     { Min                  }
-              | "*"     { Mul                  }
-              | "/"     { Div                  }
+exp : exp binop exp       { Binary ($1, $2, $3) }
+    | "not" exp           { Unary  (Not, $2)    }
+    | "-"   exp %prec NOT { Unary  (Min, $2)    }
+    | simple_exp          { $1                  }
+%inline binop : "or"      { Or                  }
+              | "and"     { And                 }
+              | "=="      { Equal               }
+              | "!="      { NotEqual            }
+              | "<="      { LessThanOrEqual     }
+              | ">="      { GreaterThanOrEqual  }
+              | "<"       { LessThan            }
+              | ">"       { GreaterThan         }
+              | "+"       { Add                 }
+              | "-"       { Min                 }
+              | "*"       { Mul                 }
+              | "/"       { Div                 }
 
-primitive_literal : TRUE   { True   $1                        }
-                  | FALSE  { False  $1                        }
+simple_exp : primitive_literal   { Literal $1 }
+           | lhs                 { Lhs     $1 }
+           | call                { Call    $1 }
+           | "(" exp ")"         { $2         }
+
+primitive_literal : TRUE   { True  $1                         }
+                  | FALSE  { False $1                         }
                   | INT    { let (p, v) = $1 in Int    (p, v) }
                   | FLOAT  { let (p, v) = $1 in Float  (p, v) }
                   | STRING { let (p, v) = $1 in String (p, v) }
 
 lhs : LID { Id $1 }
 
-call : LID "(" exps ")" { Function ($1, $3) }
+call : LID args                { Function    ($1, $2)     }
+     | simple_exp "." LID args { Method      ($1, $3, $4) }
+     | UID args                { Constructor (Id $1, $2)  }
 
 (* -------------------------------------------------------------------------- *)
 
@@ -128,7 +132,7 @@ params : (* empty *)                                 { [] }
 
 param : LID typedec { Val (fst $1, $1, Some $2, Dynamic $2) }
 
-exps : "(" separated_list(",", exp) ")" { $2 }
+args : "(" separated_list(",", exp) ")" { $2 }
 
 (* type declaration *)
 typedec : ":" typ { $2 }
