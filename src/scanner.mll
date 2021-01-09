@@ -50,37 +50,40 @@ rule scan = parse
   | ':' { COLON     (p lexbuf) }
   | ';' { SEMICOLON (p lexbuf) }
 
-  | '<' { LT    (p lexbuf) }
-  | '>' { GT    (p lexbuf) }
-  | '+' { PLUS  (p lexbuf) }
-  | '-' { MINUS (p lexbuf) }
-  | '*' { MUL   (p lexbuf) }
-  | '/' { DIV   (p lexbuf) }
+  | '<' { LT  (p lexbuf) }
+  | '>' { GT  (p lexbuf) }
+  | '+' { ADD (p lexbuf) }
+  | '-' { MIN (p lexbuf) }
+  | '*' { MUL (p lexbuf) }
+  | '/' { DIV (p lexbuf) }
 
-  | "==" { EQUALS  (p lexbuf) }
-  | "!=" { NEQUALS (p lexbuf) }
-(*
-  | "<-" { LTMIN (p lexbuf) }
-  | "->" { MINGT (p lexbuf) }
-*)
-  | "<=" { LTEQ  (p lexbuf) }
-(*
-  | "=>" { EQGT  (p lexbuf) }
-*)
-  | ">=" { GTEQ  (p lexbuf) }
-(*
+  | "==" { EQ  (p lexbuf) }
+  | "!=" { NEQ (p lexbuf) }
+
+  | "<-" { LARROW (p lexbuf) }
+  | "->" { RARROW (p lexbuf) }
+  | "<=" { LTEQ   (p lexbuf) }
+  | "=>" { EQGT   (p lexbuf) }
+  | ">=" { GTEQ   (p lexbuf) }
+
   | "+=" { ASGADD (p lexbuf) }
   | "-=" { ASGMIN (p lexbuf) }
   | "*=" { ASGMUL (p lexbuf) }
   | "/=" { ASGDIV (p lexbuf) }
-*)
-  | "not" { NOT (p lexbuf) }
-  | "and" { AND (p lexbuf) }
-  | "or"  { OR  (p lexbuf) }
 
   | "var"      { VAR      (p lexbuf) }
   | "val"      { VAL      (p lexbuf) }
   | "function" { FUNCTION (p lexbuf) }
+
+  | "return" { RETURN (p lexbuf) }
+  | "if"     { IF     (p lexbuf) }
+  | "elseif" { ELSEIF (p lexbuf) }
+  | "else"   { ELSE   (p lexbuf) }
+  | "while"  { WHILE  (p lexbuf) }
+
+  | "not" { NOT (p lexbuf) }
+  | "and" { AND (p lexbuf) }
+  | "or"  { OR  (p lexbuf) }
 
   | "true"    { TRUE  (p lexbuf)                    }
   | "false"   { FALSE (p lexbuf)                    }

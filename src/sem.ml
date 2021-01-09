@@ -1,6 +1,8 @@
 
 open Ast2
 
+exception ErrNotImplemented
+
 exception ErrCompiler of string
 
 exception ErrGlobalVar of Lexing.position * id
@@ -130,11 +132,22 @@ and sem_typ typ = match typ with
 (* -------------------------------------------------------------------------- *)
 
 and sem_stmt stmt = match stmt with
-  | Asg (lhs, exp) ->
+  | Asg (lhs, _, exp) ->
     let lhs = sem_lhs lhs in
     let exp = sem_exp exp in
+    (* TODO: match op *)
     (* TODO: match types *)
     {pos = lhs.pos; u = Asg (lhs, exp)}
+
+  | Call call -> raise ErrNotImplemented
+  | Return exp ->
+    begin match exp with
+    | None -> raise ErrNotImplemented
+    | Some exp -> raise ErrNotImplemented
+    end
+  | If (exp, block, elseif, else_) -> raise ErrNotImplemented
+  | While (exp, block) -> raise ErrNotImplemented
+  | Block block -> raise ErrNotImplemented
 
 (* -------------------------------------------------------------------------- *)
 
@@ -143,6 +156,9 @@ and sem_exp exp = match exp with
     let pos = Lexing.dummy_pos in
     let typ = sem_typ typ in
     {pos = pos; typ = typ; u = Dynamic}
+
+  | Binary (lexp, op, rexp) -> raise ErrNotImplemented
+  | Unary (op, exp) -> raise ErrNotImplemented
 
   | Ast1.Literal True    p     -> {pos = p; typ = Bool;   u = LiteralTrue    }
   | Ast1.Literal False   p     -> {pos = p; typ = Bool;   u = LiteralFalse   }
@@ -153,6 +169,8 @@ and sem_exp exp = match exp with
   | Ast1.Lhs lhs ->
     let {pos; typ; _} as lhs = sem_lhs lhs in
     {pos = pos; typ = typ; u = Lhs lhs}
+
+  | Call call -> raise ErrNotImplemented
 
 (* -------------------------------------------------------------------------- *)
 

@@ -7,15 +7,14 @@
 %token <Lexing.position> LBRACE "{" RBRACE "}"
 %token <Lexing.position> ASG "=" DOT "." COMMA "," COLON ":" SEMICOLON ";"
 %token <Lexing.position> OR "or" AND "and" NOT "not"
-%token <Lexing.position> EQUALS "==" NEQUALS "!="
-%token <Lexing.position> LT "<" GT ">" LTEQ "<=" GTEQ ">="
-%token <Lexing.position> PLUS "+" MINUS "-" MUL "*" DIV "/"
-/*
+%token <Lexing.position> EQ "==" NEQ "!="
+%token <Lexing.position> LARROW "<-" RARROW "->"
+%token <Lexing.position> LT "<" GT ">" LTEQ "<=" EQGT "=>" GTEQ ">=" 
+%token <Lexing.position> ADD "+" MIN "-" MUL "*" DIV "/"
 %token <Lexing.position> ASGADD "+=" ASGMIN "-=" ASGMUL "*=" ASGDIV "/="
-*/
-%token <Lexing.position> IF "if" ELSEIF "elseif" ELSE "else"
 %token <Lexing.position> RETURN "return"
-%token <Lexing.position> WHILE "while" FOR "for"
+%token <Lexing.position> IF "if" ELSEIF "elseif" ELSE "else"
+%token <Lexing.position> WHILE "while" (* FOR "for" *)
 
 %token <Lexing.position> VAL "val" VAR "var"
 %token <Lexing.position> FUNCTION "function"
@@ -33,9 +32,9 @@
 /* operator precedence and associativity */
 %left     OR
 %left     AND
-%nonassoc EQUALS NEQUALS
+%nonassoc EQ NEQ
 %nonassoc LT GT LTEQ GTEQ
-%left     PLUS MINUS
+%left     ADD MIN
 %left     MUL DIV
 %left     NOT /* precedence for unary minus */
 
@@ -79,8 +78,12 @@ compound_stmt : "if" exp block elseif* else_? { If    ($2, $3, $4, $5) }
               (* for *)
               | block                         { Block $1               }
 
-assignment : lhs "=" exp { Asg ($1, $3) }
-             (* += -= *= /= *)
+assignment : lhs op exp { Asg ($1, $2, $3) }
+%inline op : "="        { AsgSimple        }
+           | "+="       { AsgAdd           }
+           | "-="       { AsgMin           }
+           | "*="       { AsgMul           }
+           | "/="       { AsgDiv           }
 
 (* auxiliary to "if" in compound_stmt *)
 elseif : "elseif" exp block { ($2, $3) }
@@ -88,25 +91,25 @@ else_  : "else"       block { $2       }
 
 (* -------------------------------------------------------------------------- *)
 
-exp : exp binop exp     { Binary  ($1, $2, $3) }
-    | "-" exp %prec NOT { Unary   (Minus, $2)  }
-    | "not" exp         { Unary   (Not,   $2)  }
-    | primitive_literal { Literal $1           }
-    | lhs               { Lhs     $1           }
-    | call              { Call    $1           }
-    | "(" exp ")"       { $2                   }
-%inline binop : | "or"  { Or                   }
-                | "and" { And                  }
-                | "=="  { Equal                }
-                | "!="  { NotEqual             }
-                | "<="  { LessThanOrEqual      }
-                | ">="  { GreaterThanOrEqual   }
-                | "<"   { LessThan             }
-                | ">"   { GreaterThan          }
-                | "+"   { Plus                 }
-                | "-"   { Minus                }
-                | "*"   { Mul                  }
-                | "/"   { Div                  }
+exp : exp binop exp       { Binary  ($1, $2, $3) }
+    | "not" exp           { Unary   (Not, $2)    }
+    | "-"   exp %prec NOT { Unary   (Min, $2)    }
+    | primitive_literal   { Literal $1           }
+    | lhs                 { Lhs     $1           }
+    | call                { Call    $1           }
+    | "(" exp ")"         { $2                   }
+%inline binop : "or"    { Or                   }
+              | "and"   { And                  }
+              | "=="    { Equal                }
+              | "!="    { NotEqual             }
+              | "<="    { LessThanOrEqual      }
+              | ">="    { GreaterThanOrEqual   }
+              | "<"     { LessThan             }
+              | ">"     { GreaterThan          }
+              | "+"     { Add                  }
+              | "-"     { Min                  }
+              | "*"     { Mul                  }
+              | "/"     { Div                  }
 
 primitive_literal : TRUE   { True   $1                        }
                   | FALSE  { False  $1                        }

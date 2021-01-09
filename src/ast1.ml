@@ -1,12 +1,14 @@
 
 type p = Lexing.position
 
-type op =
+type asgop = AsgSimple | AsgAdd | AsgMin | AsgMul | AsgDiv
+
+type binop =
   | Or | And
   | Equal | NotEqual
   | LessThanOrEqual | GreaterThanOrEqual
   | LessThan | GreaterThan
-  | Plus | Minus | Mul | Div
+  | Add | Min | Mul | Div
   | Not
 
 (* main *)
@@ -26,24 +28,24 @@ and typ =
 
 and stmt =
   (* Simple *)
-  | Asg    of lhs * exp
+  | Asg    of lhs * asgop * exp
   | Call   of call
   | Return of exp option
   (* Compound *)
-  | While  of exp * block
   | If     of exp * block * (exp * block) list * block option
+  | While  of exp * block
   | Block  of block
 
 and exp =
   | Dynamic of typ
-  | Binary  of exp * op * exp
-  | Unary   of op * exp
+  | Binary  of exp * binop * exp
+  | Unary   of binop * exp
   | Literal of literal
   | Lhs     of lhs
   | Call    of call
 
 and call =
-  | Function    of id * exp list
+  | Function of id * exp list
   (*
   | Method      of exp * id * exp list
   | Constructor of typ * exp list
