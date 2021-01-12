@@ -8,7 +8,10 @@ let _ =
   let (lexbuf, ic) = Scanner.setup input in
   let ast1 = Parser.program Scanner.scan lexbuf in
   Scanner.teardown ic;
-  let ast2 = Sem.analyse ast1 in
+  let ast2 = match Sem.analyse ast1 with
+    | Ok ast2 -> ast2
+    | Error s -> raise (Failure s) (* TODO *)
+  in
   let m = Backend.compile ast2 in
   let output =
       let l = String.split_on_char '.' input in

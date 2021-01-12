@@ -74,7 +74,7 @@ let tests = [(
   "function definition - invalid () for parameters", {|
     function f() {}
   |}, {|
-    error in line -1: Elo.Parser.MenhirBasics.Error
+    Elo.Parser.MenhirBasics.Error
   |})
 ]
 
@@ -188,12 +188,13 @@ and tostring_lhs n lhs =
 
 let () =
   let f (name, input, expected) =
-    let output =
+    let output = try
       let lexbuf = Lexing.from_string input in
-      let ast1 = Parser.program Scanner.scan lexbuf in
+      let ast1 =Parser.program Scanner.scan lexbuf in
       match Sem.analyse ast1 with
       | Ok ast2 -> tostring_ast2 ast2
       | Error s -> s
+      with e -> Printexc.to_string e
     in
     let splitout = String.split_on_char '\n' output in
     let expected = String.split_on_char '\n' expected in
