@@ -3,16 +3,6 @@ let tests = [(
 (* -------------------------------------------------------------------------- *)
 (* GLOBAL VARIABLES --------------------------------------------------------- *)
 (* -------------------------------------------------------------------------- *)
-  (*
-    TODO:
-    "global variables - immutable array types"
-    "global variables - mutable array types"
-    "global variables - immutable record types"
-    "global variables - mutable record types"
-    "global variables - regular monitor types"
-    "global variables - unlocked monitor types"
-    "global variables - condition queue type"
-  *)
   "global variables - primitive types", {|
     val a1 = true;
     val b1 = 1;
@@ -55,21 +45,25 @@ let tests = [(
 (* FUNCTION DEFINITION ------------------------------------------------------ *)
 (* -------------------------------------------------------------------------- *)
   "function definition - ok", {|
-    function main(args: [String]) {
-      val name = "name";
-      val options = "options";
+    function f(x: Int, y: Bool, z: [Int]) {
+      val a = "A";
+      val b = "B";
     }
   |}, {|
-    DEF FUNCTION main : VOID
+    DEF FUNCTION f : VOID
       PARAMETERS (
-        DEF VAL args : [STRING] =
-          DYNAMIC [STRING]
+        DEF VAL x : INT =
+          DYNAMIC INT,
+        DEF VAL y : BOOL =
+          DYNAMIC BOOL,
+        DEF VAL z : [INT] =
+          DYNAMIC [INT]
       )
     {
-      DEF VAL name : STRING =
-        STRING("name")
-      DEF VAL options : STRING =
-        STRING("options")
+      DEF VAL a : STRING =
+        STRING("A")
+      DEF VAL b : STRING =
+        STRING("B")
     }
   (*-----------------------------------------------------------------*) |}); (
   "function definition - no parameters", {|
@@ -192,37 +186,14 @@ and tostring_lhs n lhs =
       tabs n ^ "ARRAY => " ^ arr ^ "\n" ^
       tabs n ^ "INDEX => " ^ idx
 
-let handle_error e =
-  let f = sprintf "error in line %d: %s" in
-  let (ln, s) = match e with
-    | Sem.Symtable.ErrDuplicate (def, {id; pos; _}) ->
-      let ln = def.pos.pos_lnum in
-      let msg = sprintf "redeclaration of variable '%s' from line %d" in
-      ln, msg id pos.pos_lnum
-    | Sem.ErrGlobalVar ({pos_lnum; _}, id) ->
-      let ln = pos_lnum in
-      let msg = sprintf "global variable '%s' must be defined as 'val'" in
-      ln, msg id
-    | Sem.ErrUntypedVarDec def          -> -1, "a"
-    | Sem.ErrUnknownType typ            -> -1, "a"
-    | Sem.ErrIndexingNonArray lhs       -> -1, "a"
-    | Sem.ErrRedeclaration (def1, def2) -> -1, "a"
-    | Sem.ErrUninitializedVal def       -> -1, "a"
-    | Sem.ErrUndefinedVariable id       -> -1, "a"
-    | Sem.ErrInvalidVariable id         -> -1, "a"
-    | Sem.ErrInvalidType (typ, exp)     -> -1, "a"
-    | e                                 -> -1, Printexc.to_string e
-  in
-  f ln s
-
 let () =
   let f (name, input, expected) =
-    let output = try
+    let output =
       let lexbuf = Lexing.from_string input in
       let ast1 = Parser.program Scanner.scan lexbuf in
-      let ast2 = Sem.analyse ast1 in
-      tostring_ast2 ast2
-      with e -> handle_error e
+      match Sem.analyse ast1 with
+      | Ok ast2 -> tostring_ast2 ast2
+      | Error s -> s
     in
     let splitout = String.split_on_char '\n' output in
     let expected = String.split_on_char '\n' expected in

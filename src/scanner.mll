@@ -71,15 +71,17 @@ rule scan = parse
   | "*=" { ASGMUL (p lexbuf) }
   | "/=" { ASGDIV (p lexbuf) }
 
-  | "var"      { VAR      (p lexbuf) }
-  | "val"      { VAL      (p lexbuf) }
-  | "function" { FUNCTION (p lexbuf) }
+  | "var"      { VAR (p lexbuf) }
+  | "val"      { VAL (p lexbuf) }
+  | "function" { FUN (p lexbuf) }
+  | "record"   { REC (p lexbuf) }
 
   | "return" { RETURN (p lexbuf) }
   | "if"     { IF     (p lexbuf) }
   | "elseif" { ELSEIF (p lexbuf) }
   | "else"   { ELSE   (p lexbuf) }
   | "while"  { WHILE  (p lexbuf) }
+  | "for"    { FOR    (p lexbuf) }
 
   | "not" { NOT (p lexbuf) }
   | "and" { AND (p lexbuf) }

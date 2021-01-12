@@ -14,10 +14,11 @@
 %token <Lexing.position> ASGADD "+=" ASGMIN "-=" ASGMUL "*=" ASGDIV "/="
 %token <Lexing.position> RETURN "return"
 %token <Lexing.position> IF "if" ELSEIF "elseif" ELSE "else"
-%token <Lexing.position> WHILE "while" (* FOR "for" *)
+%token <Lexing.position> WHILE "while" FOR "for"
 
 %token <Lexing.position> VAL "val" VAR "var"
-%token <Lexing.position> FUNCTION "function"
+%token <Lexing.position> FUN "function"
+%token <Lexing.position> REC "record"
 
 %token <Lexing.position * string> LID UID
 
@@ -48,6 +49,7 @@ program : def* EOF { $1 }
 
 def : variable_def { $1 }
     | function_def { $1 }
+    | record_def   { $1 }
 
 variable_def : val_def { $1 } | var_def { $1 }
 
@@ -64,6 +66,8 @@ block_elem : variable_def { V $1 }
 typ : UID         { Id    $1 }
     | "[" typ "]" { Array $2 }
 
+record_def : "record" UID "{" variable_def* "}" { Rec ($1, $2, $4) }
+
 (* -------------------------------------------------------------------------- *)
 
 stmt : simple_stmt ";" { $1 }
@@ -75,7 +79,7 @@ simple_stmt : assignment    { $1        }
 
 compound_stmt : "if" exp block elseif* else_? { If    ($2, $3, $4, $5) }
               | "while" exp block             { While ($2, $3)         }
-              (* for *)
+              | "for" LID "=" range block     { For   ($2, $4, $5)     }
               | block                         { Block $1               }
 
 assignment : lhs op exp { Asg ($1, $2, $3) }
@@ -88,6 +92,12 @@ assignment : lhs op exp { Asg ($1, $2, $3) }
 (* auxiliary to "if" in compound_stmt *)
 elseif : "elseif" exp block { ($2, $3) }
 else_  : "else"       block { $2       }
+
+range : exp arrow exp { Range ($1, $2, $3) }
+%inline arrow : "->"  { RightExcluding     }
+              | "<-"  { LeftExcluding      }
+              | "=>"  { RightIncluding     }
+              | "<="  { LeftIncluding      }
 
 (* -------------------------------------------------------------------------- *)
 

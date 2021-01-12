@@ -71,16 +71,16 @@ let tests = [(
 (* --------------------------------------------------------------------- *) ); (
   "keywords",
   {|
-    var val function
+    var val function record
     return
-    if elseif else while
+    if elseif else while for
     not and or
     true false
   |},
   [
-    "VAR"; "VAL"; "FUNCTION";
+    "VAR"; "VAL"; "FUN"; "REC";
     "RETURN";
-    "IF"; "ELSEIF"; "ELSE"; "WHILE";
+    "IF"; "ELSEIF"; "ELSE"; "WHILE"; "FOR";
     "NOT"; "AND"; "OR";
     "TRUE"; "FALSE";
   ]
@@ -259,15 +259,17 @@ let step lexbuf = match Scanner.scan lexbuf with
   | ASGMUL _ -> "*="
   | ASGDIV _ -> "/="
 
-  | VAR      _ -> "VAR"
-  | VAL      _ -> "VAL"
-  | FUNCTION _ -> "FUNCTION"
+  | VAR _ -> "VAR"
+  | VAL _ -> "VAL"
+  | FUN _ -> "FUN"
+  | REC _ -> "REC"
 
   | RETURN _ -> "RETURN"
   | IF     _ -> "IF"
   | ELSEIF _ -> "ELSEIF"
   | ELSE   _ -> "ELSE"
   | WHILE  _ -> "WHILE"
+  | FOR    _ -> "FOR"
 
   | NOT _ -> "NOT"
   | AND _ -> "AND"

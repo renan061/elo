@@ -11,6 +11,12 @@ type binop =
   | Add | Min | Mul | Div
   | Not
 
+type arrow =
+  | RightExcluding
+  | LeftExcluding
+  | RightIncluding
+  | LeftIncluding
+
 (* main *)
 
 type ast = def list
@@ -19,6 +25,7 @@ and def =
   | Val of p * id * typ option * exp
   | Var of p * id * typ option * exp option
   | Fun of p * id * def list * typ option * block
+  | Rec of p * id * def list
 
 and block = block_elem list
 
@@ -34,6 +41,7 @@ and stmt =
   (* Compound *)
   | If     of exp * block * (exp * block) list * block option
   | While  of exp * block
+  | For    of id * range * block
   | Block  of block
 
 and exp =
@@ -66,5 +74,6 @@ and lhs =
 
 and id = p * string
 
-(* variable definition or statement *)
-and block_elem = V of def | S of stmt
+and block_elem = V of def | S of stmt (* variable definition or statement *)
+
+and range = Range of exp * arrow * exp

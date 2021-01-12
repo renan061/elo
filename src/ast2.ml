@@ -11,7 +11,7 @@ type typ =
 
 (* nodes *)
 
-type ast = def list
+type ast = (def list, string) result
 
 and def = {
   pos: Lexing.position;

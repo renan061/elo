@@ -1,5 +1,6 @@
 
 open Ast2
+open Printf
 
 exception ErrNotImplemented
 
@@ -59,7 +60,10 @@ let st = new Symtable.table
 
 let rec analyse ast1 =
   st#down;
-  let ast2 = List.map sem_top ast1 in
+  let ast2 =
+    try Ok (List.map sem_top ast1)
+    with e -> Error (handle_error e)
+  in
   st#up;
   ast2
 
@@ -72,15 +76,21 @@ and sem_top def = match def with
 
   | Ast1.Fun (pos, (_, id), params, typ, block) ->
     st#down;
-    let typ = match typ with None -> Void | Some typ -> sem_typ typ in
+    let typ = match typ with
+      | None -> Void
+      | Some typ -> sem_typ typ
+    in
     let f = function
-      | Ast1.Val (pos, id, Some _, Ast1.Dynamic _) as def -> sem_var def
+      | Ast1.Val (pos, id, Some _, Ast1.Dynamic _) as param -> sem_var param
       | _ -> raise (ErrCompiler "top.Fun")
     in
     let params = List.map f params in
     let block = sem_block block in
     st#up;
     {pos = pos; id = id; typ = typ; u = Fun (params, block); llv = dummyV}
+
+  | Ast1.Rec _ ->
+    raise ErrNotImplemented
 
 (* -------------------------------------------------------------------------- *)
 
@@ -147,6 +157,7 @@ and sem_stmt stmt = match stmt with
     end
   | If (exp, block, elseif, else_) -> raise ErrNotImplemented
   | While (exp, block) -> raise ErrNotImplemented
+  | For (id, range, block) -> raise ErrNotImplemented
   | Block block -> raise ErrNotImplemented
 
 (* -------------------------------------------------------------------------- *)
@@ -194,3 +205,28 @@ and sem_lhs lhs = match lhs with
       | _         -> raise (ErrIndexingNonArray lhs)
     in
     {pos = pos; typ = typ; u = Indexed (arr, index)}
+
+(* -------------------------------------------------------------------------- *)
+
+and handle_error e =
+  let f = sprintf "error in line %d: %s" in
+  let (ln, s) = match e with
+    | Symtable.ErrDuplicate (def, {id; pos; _}) ->
+      let ln = def.pos.pos_lnum in
+      let msg = sprintf "redeclaration of variable '%s' from line %d" in
+      ln, msg id pos.pos_lnum
+    | ErrGlobalVar ({pos_lnum; _}, id) ->
+      let ln = pos_lnum in
+      let msg = sprintf "global variable '%s' must be defined as 'val'" in
+      ln, msg id
+    | ErrUntypedVarDec def          -> -1, "a"
+    | ErrUnknownType typ            -> -1, "a"
+    | ErrIndexingNonArray lhs       -> -1, "a"
+    | ErrRedeclaration (def1, def2) -> -1, "a"
+    | ErrUninitializedVal def       -> -1, "a"
+    | ErrUndefinedVariable id       -> -1, "a"
+    | ErrInvalidVariable id         -> -1, "a"
+    | ErrInvalidType (typ, exp)     -> -1, "a"
+    | e                             -> -1, Printexc.to_string e
+  in
+  f ln s
