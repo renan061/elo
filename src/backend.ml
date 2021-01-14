@@ -31,12 +31,13 @@ module IR = struct
   (* arrayT *)
 
   let type_from = function
-    | Void    -> void_et
-    | Bool    -> bool_et
-    | Int     -> int32_et
-    | Float   -> float32_et
-    | String  -> string_et
-    | Array _ -> raise NotImplemented
+    | Void     -> void_et
+    | Bool     -> bool_et
+    | Int      -> int32_et
+    | Float    -> float32_et
+    | String   -> string_et
+    | Array  _ -> raise NotImplemented
+    | Record _ -> raise NotImplemented
 
   (* elo values *)
   let void_ev    = Llvm.const_null void_et
@@ -77,6 +78,8 @@ and backend_top irs (def: def) = match def.u with
     Llvm.position_at_end (Llvm.entry_block def.llv) irs.b;
     backend_block irs block
 
+  | _ -> raise NotImplemented
+
 and backend_block irs block =
   let f = function
     | V v -> backend_local_var irs v
@@ -96,7 +99,7 @@ and backend_local_var irs def = match def.u with
 
   | _ -> raise (ErrBackend "var._")
 
-and backend_exp irs {pos; typ; u} = match u with
+and backend_exp irs {p; typ; u} = match u with
   | Dynamic           -> raise ErrDynamicExp
   | ZeroValue         -> IR.zero_value typ
   | LiteralTrue       -> IR.true_ev
@@ -104,7 +107,7 @@ and backend_exp irs {pos; typ; u} = match u with
   | LiteralInt    v   -> IR.int32_ev   v
   | LiteralFloat  v   -> IR.float32_ev v
   | LiteralString v   -> IR.string_ev  v
-  | Lhs {pos; typ; u} ->
+  | Lhs {p; typ; u} ->
     begin match u with
     | Id (_, def) ->
       begin match def.u with

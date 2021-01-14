@@ -3,7 +3,7 @@ let tests = [(
 (* -------------------------------------------------------------------------- *)
 (* GLOBAL VARIABLES --------------------------------------------------------- *)
 (* -------------------------------------------------------------------------- *)
-  "global variables - primitive types", {|
+  "global variables - ok", {|
     val a1 = true;
     val b1 = 1;
     val c1 = 2.0;
@@ -29,21 +29,31 @@ let tests = [(
       FLOAT(5.)
     DEF VAL d2 : STRING =
       STRING("6")
-  (*-----------------------------------------------------------------*) |}); (
+  (*-------------------------------------------------------------------*) |}); (
   "global variables - must be val", {|
     var a = 1;
   |}, {|
     error in line 2: global variable 'a' must be defined as 'val'
-  (*-----------------------------------------------------------------*) |}); (
-  "global variables - redeclaration", {|
+  (*-------------------------------------------------------------------*) |}); (
+  "global variables - redeclaration (variable x variable)", {|
     val x = true;
     val x = false;
   |}, {|
     error in line 3: redeclaration of variable 'x' from line 2
-  |}); (
-(* -------------------------------------------------------------------------- *)
-(* FUNCTION DEFINITION ------------------------------------------------------ *)
-(* -------------------------------------------------------------------------- *)
+  (*-------------------------------------------------------------------*) |}); (
+  "global variables - redeclaration (function x variable)", {|
+    function x {}
+    val x = true;
+  |}, {|
+    error in line 3: redeclaration of function 'x' from line 2
+  (*-------------------------------------------------------------------*) |}); (
+  "global variables - uppercase id", {|
+    val A = true;
+  |}, {|
+    Elo.Parser.MenhirBasics.Error
+(* ------------------------------------------------------------------- *) |}); (
+(* FUNCTION DEFINITION ----------------------------------------------- *)
+(* ------------------------------------------------------------------- *)
   "function definition - ok", {|
     function f(x: Int, y: Bool, z: [Int]) {
       val a = "A";
@@ -65,18 +75,135 @@ let tests = [(
       DEF VAL b : STRING =
         STRING("B")
     }
-  (*-----------------------------------------------------------------*) |}); (
-  "function definition - no parameters", {|
+  (*-------------------------------------------------------------------*) |}); (
+  "function definition - recursion visibility (TODO)", {|
+    function f {
+      // TODO
+      // f();
+    }
+  |}, {|
+    DEF FUNCTION f () : VOID {}
+  (*-------------------------------------------------------------------*) |}); (
+  "function definition - without parameters / without return type", {|
     function f {}
   |}, {|
     DEF FUNCTION f () : VOID {}
-  (*-----------------------------------------------------------------*) |}); (
+  (*-------------------------------------------------------------------*) |}); (
+  "function definition - with one parameter / without return type", {|
+    function f(a: Bool) {}
+  |}, {|
+    DEF FUNCTION f : VOID
+      PARAMETERS (
+        DEF VAL a : BOOL =
+          DYNAMIC BOOL
+      )
+    {}
+  (*-------------------------------------------------------------------*) |}); (
+  "function definition - with multiple parameters / without return type", {|
+    function f1(a: Int, b: Float) {}
+    function f2(a: Bool, b: Float, c: Int) {}
+  |}, {|
+    DEF FUNCTION f1 : VOID
+      PARAMETERS (
+        DEF VAL a : INT =
+          DYNAMIC INT,
+        DEF VAL b : FLOAT =
+          DYNAMIC FLOAT
+      )
+    {}
+    DEF FUNCTION f2 : VOID
+      PARAMETERS (
+        DEF VAL a : BOOL =
+          DYNAMIC BOOL,
+        DEF VAL b : FLOAT =
+          DYNAMIC FLOAT,
+        DEF VAL c : INT =
+          DYNAMIC INT
+      )
+    {}
+  (*-------------------------------------------------------------------*) |}); (
+  "function definition - without parameters / with return type", {|
+    function f: Bool {}
+  |}, {|
+    DEF FUNCTION f () : BOOL {}
+  (*-------------------------------------------------------------------*) |}); (
+  "function definition - with one parameter / with return type", {|
+    function f(a: Bool): Float {}
+  |}, {|
+    DEF FUNCTION f : FLOAT
+      PARAMETERS (
+        DEF VAL a : BOOL =
+          DYNAMIC BOOL
+      )
+    {}
+  (*-------------------------------------------------------------------*) |}); (
+  "function definition - with multiple parameters / with return type", {|
+    function f1(a: Bool, b: Int): Float {}
+    function f2(a: Bool, b: Int, c: Float, d: Float): String {}
+  |}, {|
+    DEF FUNCTION f1 : FLOAT
+      PARAMETERS (
+        DEF VAL a : BOOL =
+          DYNAMIC BOOL,
+        DEF VAL b : INT =
+          DYNAMIC INT
+      )
+    {}
+    DEF FUNCTION f2 : STRING
+      PARAMETERS (
+        DEF VAL a : BOOL =
+          DYNAMIC BOOL,
+        DEF VAL b : INT =
+          DYNAMIC INT,
+        DEF VAL c : FLOAT =
+          DYNAMIC FLOAT,
+        DEF VAL d : FLOAT =
+          DYNAMIC FLOAT
+      )
+    {}
+  (*-------------------------------------------------------------------*) |}); (
   "function definition - invalid () for parameters", {|
     function f() {}
   |}, {|
     Elo.Parser.MenhirBasics.Error
-  |})
-]
+  (*-------------------------------------------------------------------*) |}); (
+  "function definition - redeclaration (function x function)", {|
+    function f : String {}
+    function f(a: Int) {}
+  |}, {|
+    error in line 3: redeclaration of function 'f' from line 2
+  (*-------------------------------------------------------------------*) |}); (
+  "function definition - redeclaration (variable x function)", {|
+    val f = 5;
+    function f(a: Int) {}
+  |}, {|
+    error in line 3: redeclaration of variable 'f' from line 2
+  (*-------------------------------------------------------------------*) |}); (
+  "function definition - uppercase id", {|
+    function F(a: Float) {}
+  |}, {|
+    Elo.Parser.MenhirBasics.Error
+(* ------------------------------------------------------------------- *) |}); (
+(* RECORD DEFINITION ------------------------------------------------- *)
+(* ------------------------------------------------------------------- *)
+  "record definition - ok", {|
+    record R {
+      val x = 2;
+      var y: Int;
+    }
+  |}, {|
+    DEF RECORD R {
+      DEF VAL x : INT =
+        INT(2)
+      DEF VAR y : INT =
+        ZEROVALUE INT
+    }
+  (*-------------------------------------------------------------------*) |}); (
+  "function definition - empty record", {|
+    record R {}
+  |}, {|
+    DEF RECORD R {}
+|})]
 
 (* -------------------------------------------------------------------------- *)
 
@@ -99,6 +226,7 @@ and tostring_top (def: def) =
   let n = 0 in
   match def.u with
   | Val _ -> tostring_var n def
+  | Var _ -> tostring_var n def
   | Fun (params, block) ->
     let typ = tostring_typ def.typ in
     let block = tostring_block (n + 1) block in
@@ -124,7 +252,10 @@ and tostring_top (def: def) =
       Buffer.add_string buf block;
       Buffer.contents buf
     end
-  | _ -> raise ErrPrinter
+  | Rec defs ->
+    let block = List.map (fun def -> V def) defs in
+    let block = tostring_block (n + 1) block in
+    String.concat " " ["DEF RECORD"; def.id; block]
 
 and tostring_var n (def: def) =
   let typ = tostring_typ def.typ in
@@ -154,6 +285,7 @@ and tostring_typ = function
   | Float     -> "FLOAT"
   | String    -> "STRING"
   | Array typ -> "[" ^ tostring_typ typ ^ "]"
+  | Record id -> "RECORD " ^ id
 
 and tostring_stmt n (stmt: stmt) = match stmt.u with
   | Asg (lhs, exp) ->

@@ -8,16 +8,17 @@ type typ =
   | Float
   | String
   | Array of typ
+  | Record of id
 
 (* nodes *)
 
 type ast = (def list, string) result
 
 and def = {
-  pos: Lexing.position;
+  p: Lexing.position;
   id: id;
   typ: typ;
-  u: defU;
+  mutable u: defU; (* mutated only during the semantic analysis *)
 
   mutable llv: Llvm.llvalue;
 }
@@ -27,18 +28,18 @@ and block = block_elem list
 and block_elem = V of def | S of stmt
 
 and stmt = {
-  pos: Lexing.position;
+  p: Lexing.position;
   u: stmtU;
 }
 
 and exp = {
-  pos: Lexing.position;
+  p: Lexing.position;
   typ: typ;
   u: expU;
 }
 
 and lhs = {
-  pos: Lexing.position;
+  p: Lexing.position;
   typ: typ;
   u: lhsU;
 }
@@ -49,6 +50,7 @@ and defU =
   | Val of exp
   | Var of exp
   | Fun of def list * block
+  | Rec of def list
 
 and stmtU =
   | Asg of lhs * exp
