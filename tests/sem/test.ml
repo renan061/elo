@@ -1,4 +1,12 @@
 
+(* 
+  GLOBAL VARIABLES
+  FUNCTION DEFINITIONS
+  RECORD DEFINITIONS
+  TODO: TYPES
+  STATEMENTS
+*)
+
 let tests = [(
 (* -------------------------------------------------------------------------- *)
 (* GLOBAL VARIABLES --------------------------------------------------------- *)
@@ -199,10 +207,111 @@ let tests = [(
         ZEROVALUE INT
     }
   (*-------------------------------------------------------------------*) |}); (
-  "function definition - empty record", {|
+  "record definition - empty record", {|
     record R {}
   |}, {|
     DEF RECORD R {}
+  (*-------------------------------------------------------------------*) |}); (
+  "record definition - multiple records", {|
+    record R1 {
+      val a = 1;
+    }
+    record R2 {
+      val a = 1;
+      val b: String = "string";
+    }
+    record R3 {
+      var a = 1.0;
+    }
+    record R4 {
+      var a: Float = 1.0;
+      var b = true;
+    }
+    record R5 {
+      var a: Int;
+    }
+    record R6 {
+      var a: Int;
+      var b: Bool;
+    }
+    record R7 {
+      var a: Float;
+      val b = true;
+      var c: Int = 100;
+      var d = false;
+      val e: String = "string";
+    }
+  |}, {|
+    DEF RECORD R1 {
+      DEF VAL a : INT =
+        INT(1)
+    }
+    DEF RECORD R2 {
+      DEF VAL a : INT =
+        INT(1)
+      DEF VAL b : STRING =
+        STRING("string")
+    }
+    DEF RECORD R3 {
+      DEF VAR a : FLOAT =
+        FLOAT(1.)
+    }
+    DEF RECORD R4 {
+      DEF VAR a : FLOAT =
+        FLOAT(1.)
+      DEF VAR b : BOOL =
+        BOOL(true)
+    }
+    DEF RECORD R5 {
+      DEF VAR a : INT =
+        ZEROVALUE INT
+    }
+    DEF RECORD R6 {
+      DEF VAR a : INT =
+        ZEROVALUE INT
+      DEF VAR b : BOOL =
+        ZEROVALUE BOOL
+    }
+    DEF RECORD R7 {
+      DEF VAR a : FLOAT =
+        ZEROVALUE FLOAT
+      DEF VAL b : BOOL =
+        BOOL(true)
+      DEF VAR c : INT =
+        INT(100)
+      DEF VAR d : BOOL =
+        BOOL(false)
+      DEF VAL e : STRING =
+        STRING("string")
+    }
+  (*-------------------------------------------------------------------*) |}); (
+  "record definition - redeclaration", {|
+    record R {}
+    record R {
+      var a = 1;
+    }
+  |}, {|
+    error in line 3: redeclaration of record 'R' from line 2
+  (*-------------------------------------------------------------------*) |}); (
+  "record definition - lowercase id", {|
+    record r {}
+  |}, {|
+    Elo.Parser.MenhirBasics.Error
+(* ------------------------------------------------------------------- *) |}); (
+(* STATEMENTS -------------------------------------------------------- *)
+(* ------------------------------------------------------------------- *)
+  "statements - assignment", {|
+    function f {
+      var a: Int;
+      a = 1;
+    }
+  |}, {|
+    DEF FUNCTION f () : VOID {
+      DEF VAR a : INT =
+        ZEROVALUE INT
+      ASG ID a: INT =
+        INT(1)
+    }
 |})]
 
 (* -------------------------------------------------------------------------- *)
