@@ -1,5 +1,5 @@
 
-(* 
+(*
   GLOBAL VARIABLES
   FUNCTION DEFINITIONS
   RECORD DEFINITIONS
@@ -84,7 +84,7 @@ let tests = [(
         STRING("B")
     }
   (*-------------------------------------------------------------------*) |}); (
-  "function definition - recursion visibility (TODO)", {|
+  "function definition - recursion visibility", {|
     function f {
       // TODO
       // f();
@@ -300,7 +300,7 @@ let tests = [(
 (* ------------------------------------------------------------------- *) |}); (
 (* STATEMENTS -------------------------------------------------------- *)
 (* ------------------------------------------------------------------- *)
-  "statements - assignment", {|
+  "statements - assignment - ok", {|
     function f {
       var a: Int;
       a = 1;
@@ -312,6 +312,36 @@ let tests = [(
       ASG ID a: INT =
         INT(1)
     }
+  (*-------------------------------------------------------------------*) |}); (
+  "statements - assignment - reassigning val", {|
+    function f {
+      val a = 1;
+      a = 2;
+    }
+  |}, {|
+    error in line 4: cannot reassign to variable 'a' because it was defined as a 'val'
+  (*-------------------------------------------------------------------*) |}); (
+  "statements - assignment - undefined variable", {|
+    function f {
+      a = 1;
+    }
+  |}, {|
+    error in line 3: undefined variable 'a'
+  (*-------------------------------------------------------------------*) |}); (
+  "statements - assignment - mismatching types", {|
+    function f {
+      var a = 1;
+      a = true;
+    }
+  |}, {|
+    TODO
+  (*-------------------------------------------------------------------*) |}); (
+  "statements - assignment - type Void", {|
+    function f {
+      val a = f();
+    }
+  |}, {|
+    TODO
 |})]
 
 (* -------------------------------------------------------------------------- *)
@@ -399,8 +429,10 @@ and tostring_typ = function
 and tostring_stmt n (stmt: stmt) = match stmt.u with
   | Asg (lhs, exp) ->
     let lhs = tostring_lhs n lhs in
+    let n = n + 1 in
     let exp = tostring_exp n exp in
-    String.concat " " ["ASG"; lhs; "="; exp]
+    let exp = "\n" ^ (tabs n) ^ exp in
+    String.concat " " ["ASG"; lhs; "="] ^ exp
 
 and tostring_exp n (exp: exp) =
   let typ = tostring_typ exp.typ in

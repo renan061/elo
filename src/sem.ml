@@ -6,14 +6,15 @@ exception ErrNotImplemented
 
 exception ErrCompiler of string
 
+(* exception ErrUninitializedVal of Ast1.def *)
 exception ErrGlobalVar of Lexing.position * id
 exception ErrIndexingNonArray of Ast1.lhs
 exception ErrInvalidType of Ast2.typ * Ast2.exp
 exception ErrInvalidVariable of Ast1.id
+exception ErrReassignedVal of Lexing.position * id
 exception ErrRecordOnlyVariables of Ast1.def
 exception ErrRedeclaration of Ast1.def * Ast2.def
 exception ErrUndefinedVariable of Ast1.id
-(* exception ErrUninitializedVal of Ast1.def *)
 exception ErrUnknownType of Ast1.typ
 exception ErrUntypedVarDec of Ast1.def
 
@@ -166,8 +167,15 @@ and sem_stmt st stmt = match stmt with
   | Asg (lhs, _, exp) ->
     let lhs = sem_lhs st lhs in
     let exp = sem_exp st exp in
+
+    (* 'val's cannot be reassigned *)
+    begin match lhs.u with
+    | Id (id, def) -> begin match def.u with
+      | Val _ -> raise @@ ErrReassignedVal (lhs.p, id)
+      | _ -> () end | _ -> ()
+    end;
+
     (* TODO: match op *)
-    (* TODO: match types *)
     {p = lhs.p; u = Asg (lhs, exp)}
 
   | Call call -> raise ErrNotImplemented
@@ -249,8 +257,14 @@ and handle_error e =
     | ErrUntypedVarDec def          -> -1, "a"
     | ErrUnknownType typ            -> -1, "a"
     | ErrIndexingNonArray lhs       -> -1, "a"
+    | ErrReassignedVal (p, id) ->
+      let msg = sprintf "cannot reassign to variable '%s' because it was defined as a 'val'" id in
+      p.pos_lnum, msg
     | ErrRedeclaration (def1, def2) -> -1, "a"
-    | ErrUndefinedVariable id       -> -1, "a"
+    | ErrUndefinedVariable id ->
+      let (p, s) = id in
+      let msg = sprintf "undefined variable '%s'" s in
+      p.pos_lnum, msg
     | ErrInvalidVariable id         -> -1, "a"
     | ErrInvalidType (typ, exp)     -> -1, "a"
     | e                             -> -1, Printexc.to_string e
