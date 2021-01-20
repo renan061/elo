@@ -9,11 +9,11 @@ exception ErrCompiler of string
 (* exception ErrUninitializedVal of Ast1.def *)
 exception ErrGlobalVar of Lexing.position * id
 exception ErrIndexingNonArray of Ast1.lhs
-exception ErrInvalidType of Ast2.typ * Ast2.exp
 exception ErrInvalidVariable of Ast1.id
 exception ErrReassignedVal of Lexing.position * id
 exception ErrRecordOnlyVariables of Ast1.def
 exception ErrRedeclaration of Ast1.def * Ast2.def
+exception ErrType of Lexing.position * Ast2.typ * Ast2.typ
 exception ErrUndefinedVariable of Ast1.id
 exception ErrUnknownType of Ast1.typ
 exception ErrUntypedVarDec of Ast1.def
@@ -57,6 +57,36 @@ module Symtable = struct
       | exception Failure _ -> raise (ErrCompiler "symtable.insert")
   end
 end
+
+(* -------------------------------------------------------------------------- *)
+
+let can_be_reassigned {p; u; _} =
+  let ok = (true, ErrCompiler "can_be_reassigned") in
+  match u with
+  | Id (id, def) ->
+    begin match def.u with
+    | Val _ -> (false, ErrReassignedVal (p, id))
+    | _ -> ok
+    end
+  | _ -> ok
+
+let rec typecheck p t1 t2 =
+  let err = ErrType (p, t1, t2) in
+  match (t1, t2) with
+  | Void, Void | Bool, Bool | Int, Int | Float, Float | String, String -> ()
+  | Array t1, Array t2 -> begin try typecheck p t1 t2 with _ -> raise err end
+  | Record id1, Record id2 when id1 = id2 -> ()
+  | _ -> raise err
+
+(* TODO move to Ast2 module *)
+let rec typ_tostring = function
+  | Void -> "Void"
+  | Bool -> "Bool"
+  | Int -> "Int"
+  | Float -> "Float"
+  | String -> "String"
+  | Array typ -> "[" ^ typ_tostring typ  ^ "]"
+  | Record id -> id
 
 (* -------------------------------------------------------------------------- *)
 
@@ -117,8 +147,11 @@ and sem_var st def = match def with
   | Ast1.Val (p, id, typ, exp) ->
     let exp: exp = sem_exp st exp in
     let typ = match typ with
-      | None     -> exp.typ
-      | Some typ -> sem_typ st typ
+      | None -> exp.typ
+      | Some typ ->
+        let typ = sem_typ st typ in
+        typecheck p typ exp.typ;
+        typ
     in
     st#insert {p = p; id = snd id; typ = typ; u = Val exp; llv = llv}
 
@@ -130,12 +163,10 @@ and sem_var st def = match def with
       | Some typ, Some exp ->
         let typ = sem_typ st typ in
         let exp = sem_exp st exp in
-        if not (typ = exp.typ)
-          then raise @@ ErrInvalidType (typ, exp)
-          else exp
+        typecheck p typ exp.typ;
+        exp
     in
-    let id = snd id in
-    st#insert {p = p; id = id; typ = exp.typ; u = Var exp; llv = llv}
+    st#insert {p = p; id = snd id; typ = exp.typ; u = Var exp; llv = llv}
 
   | _ -> raise (ErrCompiler "var._")
 
@@ -164,17 +195,12 @@ and sem_typ st typ = match typ with
 (* -------------------------------------------------------------------------- *)
 
 and sem_stmt st stmt = match stmt with
-  | Asg (lhs, _, exp) ->
+  | Asg (p, lhs, _, exp) ->
     let lhs = sem_lhs st lhs in
     let exp = sem_exp st exp in
-
-    (* 'val's cannot be reassigned *)
-    begin match lhs.u with
-    | Id (id, def) -> begin match def.u with
-      | Val _ -> raise @@ ErrReassignedVal (lhs.p, id)
-      | _ -> () end | _ -> ()
-    end;
-
+    let ok, err = can_be_reassigned lhs in
+    if not ok then raise err;
+    typecheck p lhs.typ exp.typ;
     (* TODO: match op *)
     {p = lhs.p; u = Asg (lhs, exp)}
 
@@ -261,12 +287,16 @@ and handle_error e =
       let msg = sprintf "cannot reassign to variable '%s' because it was defined as a 'val'" id in
       p.pos_lnum, msg
     | ErrRedeclaration (def1, def2) -> -1, "a"
+    | ErrType (p, t1, t2) ->
+      let t1 = typ_tostring t1 in
+      let t2 = typ_tostring t2 in
+      let msg = sprintf "mismatching types: expected %s, got %s" t1 t2 in
+      p.pos_lnum, msg
     | ErrUndefinedVariable id ->
       let (p, s) = id in
       let msg = sprintf "undefined variable '%s'" s in
       p.pos_lnum, msg
     | ErrInvalidVariable id         -> -1, "a"
-    | ErrInvalidType (typ, exp)     -> -1, "a"
     | e                             -> -1, Printexc.to_string e
   in
   f ln s

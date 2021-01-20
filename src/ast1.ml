@@ -35,7 +35,7 @@ and typ =
 
 and stmt =
   (* Simple *)
-  | Asg    of lhs * asgop * exp
+  | Asg    of p * lhs * asgop * exp
   | Call   of call
   | Return of exp option
   (* Compound *)

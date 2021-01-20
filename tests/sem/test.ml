@@ -1,9 +1,10 @@
 
 (*
+  TODO: TYPES
+  TODO: TYPE CHECKING
   GLOBAL VARIABLES
   FUNCTION DEFINITIONS
   RECORD DEFINITIONS
-  TODO: TYPES
   STATEMENTS
 *)
 
@@ -59,6 +60,11 @@ let tests = [(
     val A = true;
   |}, {|
     Elo.Parser.MenhirBasics.Error
+  (*-------------------------------------------------------------------*) |}); (
+  "global variables - mismatching types", {|
+    val a: [Bool] = true;
+  |}, {|
+    error in line 2: mismatching types: expected [Bool], got Bool
 (* ------------------------------------------------------------------- *) |}); (
 (* FUNCTION DEFINITION ----------------------------------------------- *)
 (* ------------------------------------------------------------------- *)
@@ -300,6 +306,10 @@ let tests = [(
 (* ------------------------------------------------------------------- *) |}); (
 (* STATEMENTS -------------------------------------------------------- *)
 (* ------------------------------------------------------------------- *)
+
+(* TODO *)
+(* statements - assignment - type Void *)
+
   "statements - assignment - ok", {|
     function f {
       var a: Int;
@@ -334,14 +344,7 @@ let tests = [(
       a = true;
     }
   |}, {|
-    TODO
-  (*-------------------------------------------------------------------*) |}); (
-  "statements - assignment - type Void", {|
-    function f {
-      val a = f();
-    }
-  |}, {|
-    TODO
+    error in line 4: mismatching types: expected Int, got Bool
 |})]
 
 (* -------------------------------------------------------------------------- *)

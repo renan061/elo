@@ -82,12 +82,12 @@ compound_stmt : "if" exp block elseif* else_? { If    ($2, $3, $4, $5) }
               | "for" LID "=" range block     { For   ($2, $4, $5)     }
               | block                         { Block $1               }
 
-assignment : lhs op exp { Asg ($1, $2, $3) }
-%inline op : "="        { AsgSimple        }
-           | "+="       { AsgAdd           }
-           | "-="       { AsgMin           }
-           | "*="       { AsgMul           }
-           | "/="       { AsgDiv           }
+assignment : lhs op exp { Asg (fst $2, $1, snd $2, $3) }
+%inline op : "="        { ($1, AsgSimple)              }
+           | "+="       { ($1, AsgAdd)                 }
+           | "-="       { ($1, AsgMin)                 }
+           | "*="       { ($1, AsgMul)                 }
+           | "/="       { ($1, AsgDiv)                 }
 
 (* auxiliary to "if" in compound_stmt *)
 elseif : "elseif" exp block { ($2, $3) }
