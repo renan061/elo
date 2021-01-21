@@ -22,6 +22,7 @@
 
 %token <Lexing.position * string> LID UID
 
+%token <Lexing.position> NIL
 %token <Lexing.position> TRUE FALSE
 %token <Lexing.position * int> INT
 %token <Lexing.position * float> FLOAT
@@ -118,16 +119,20 @@ exp : exp binop exp       { Binary ($1, $2, $3) }
               | "*"       { Mul                 }
               | "/"       { Div                 }
 
-simple_exp : primitive_literal   { Literal $1 }
-           | lhs                 { Lhs     $1 }
-           | call                { Call    $1 }
-           | "(" exp ")"         { $2         }
+simple_exp : primitive_literal { Literal $1 }
+           | array_literal     { Literal $1 }
+           | lhs               { Lhs     $1 }
+           | call              { Call    $1 }
+           | "(" exp ")"       { $2         }
 
-primitive_literal : TRUE   { True  $1                         }
+primitive_literal : NIL    { Nil   $1                         }
+                  | TRUE   { True  $1                         }
                   | FALSE  { False $1                         }
                   | INT    { let (p, v) = $1 in Int    (p, v) }
                   | FLOAT  { let (p, v) = $1 in Float  (p, v) }
                   | STRING { let (p, v) = $1 in String (p, v) }
+
+array_literal : "[" separated_nonempty_list(",", exp) "]" { ArrayL ($1, $2) }
 
 lhs : LID { Id $1 }
 

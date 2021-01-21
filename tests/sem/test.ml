@@ -1,17 +1,123 @@
 
 (*
   TODO: TYPES
-  TODO: TYPE CHECKING
+  TYPE CHECKING
   GLOBAL VARIABLES
   FUNCTION DEFINITIONS
   RECORD DEFINITIONS
   STATEMENTS
 *)
 
+(*
+"type checking - Bool != Void"
+"type checking - Bool != Int"
+"type checking - Bool != Float"
+"type checking - Bool != String"
+"type checking - Bool != Array"
+"type checking - Bool != Record"
+
+"type checking - Int != Void"
+"type checking - Int != Bool"
+"type checking - Int != Float"
+"type checking - Int != String"
+"type checking - Int != Array"
+"type checking - Int != Record"
+
+"type checking - Float != Void"
+"type checking - Float != Bool"
+"type checking - Float != Int"
+"type checking - Float != String"
+"type checking - Float != Array"
+"type checking - Float != Record"
+
+"type checking - String != Void"
+"type checking - String != Bool"
+"type checking - String != Int"
+"type checking - String != Float"
+"type checking - String != Array"
+"type checking - String != Record"
+
+"type checking - Array != Void"
+"type checking - Array != Bool"
+"type checking - Array != Int"
+"type checking - Array != Float"
+"type checking - Array != String"
+"type checking - Array != Record"
+
+"type checking - Record != Void"
+"type checking - Record != Bool"
+"type checking - Record != Int"
+"type checking - Record != Float"
+"type checking - Record != String"
+"type checking - Record != Array"
+
+"type checking - Array [A] != Array [B]"
+"type checking - Array [[A]] != Array [A]"
+"type checking - Record A != Record B"
+*)
+
 let tests = [(
-(* -------------------------------------------------------------------------- *)
-(* GLOBAL VARIABLES --------------------------------------------------------- *)
-(* -------------------------------------------------------------------------- *)
+(* ------------------------------------------------------------------- *)
+(* TYPE CHECKING ----------------------------------------------------- *)
+(* ------------------------------------------------------------------- *)
+  "type checking - matching types", {|
+    val a: Void = nil;
+    val b1: Bool = true;
+    val b2: Bool = false;
+    val c: Int = 10;
+    val d: Float = 3.1415;
+    val e: String = "string";
+    val f1: [Int] = [1, 2, 3];
+    val f2: [[String]] = [["hello", "world"]];
+    val g: R = R{};
+  |}, {|
+    DEF VAL a : VOID =
+      VOID(nil)
+    DEF VAL b1 : BOOL =
+      BOOL(true)
+    DEF VAL b2 : BOOL =
+      BOOL(false)
+    DEF VAL c : INT =
+      INT(10)
+    DEF VAL d : FLOAT =
+      FLOAT(3.1415)
+    DEF VAL e : STRING =
+      STRING("string")
+    DEF VAL f1 : [INT] =
+      [INT] [INT(1), INT(2), INT(3)]
+    DEF VAL f2 : [[STRING]] =
+      [[STRING]] [[STRING] [STRING("hello"), STRING("world")]]
+    DEF VAL g : RECORD R =
+      RECORD R {}
+  (*-------------------------------------------------------------------*) |}); (
+  "type checking - Void != Int", {|
+    val a: Void = 1;
+  |}, {|
+    error in line 2: mismatching types: expected Void, got Int
+  (*-------------------------------------------------------------------*) |}); (
+  "type checking - Void != Float", {|
+    val a: Void = 5.5;
+  |}, {|
+    error in line 2: mismatching types: expected Void, got Float
+  (*-------------------------------------------------------------------*) |}); (
+  "type checking - Void != String", {|
+    val a: Void = "";
+  |}, {|
+    error in line 2: mismatching types: expected Void, got String
+  (*-------------------------------------------------------------------*) |}); (
+  "type checking - Void != Array", {|
+    val a: Void = [1];
+  |}, {|
+    error in line 2: mismatching types: expected Void, got [Int]
+  (*-------------------------------------------------------------------*) |}); (
+  "type checking - Void != Record", {|
+    record R {}
+    val a: Void = R{};
+  |}, {|
+    error in line 2: mismatching types: expected Void, got R
+(* ------------------------------------------------------------------- *) |}); (
+(* GLOBAL VARIABLES -------------------------------------------------- *)
+(* ------------------------------------------------------------------- *)
   "global variables - ok", {|
     val a1 = true;
     val b1 = 1;
@@ -306,14 +412,12 @@ let tests = [(
 (* ------------------------------------------------------------------- *) |}); (
 (* STATEMENTS -------------------------------------------------------- *)
 (* ------------------------------------------------------------------- *)
-
-(* TODO *)
-(* statements - assignment - type Void *)
-
   "statements - assignment - ok", {|
     function f {
       var a: Int;
       a = 1;
+      var b = 2.0;
+      b = 3.0;
     }
   |}, {|
     DEF FUNCTION f () : VOID {
@@ -321,6 +425,10 @@ let tests = [(
         ZEROVALUE INT
       ASG ID a: INT =
         INT(1)
+      DEF VAR b : FLOAT =
+        FLOAT(2.)
+      ASG ID b: FLOAT =
+        FLOAT(3.)
     }
   (*-------------------------------------------------------------------*) |}); (
   "statements - assignment - reassigning val", {|
@@ -440,14 +548,18 @@ and tostring_stmt n (stmt: stmt) = match stmt.u with
 and tostring_exp n (exp: exp) =
   let typ = tostring_typ exp.typ in
   match exp.u with
-  | Dynamic         -> "DYNAMIC "   ^ typ
-  | ZeroValue       -> "ZEROVALUE " ^ typ
-  | LiteralTrue     -> typ ^ "(true)"
-  | LiteralFalse    -> typ ^ "(false)"
-  | LiteralInt    v -> typ ^ "("   ^ string_of_int   v ^   ")"
-  | LiteralFloat  v -> typ ^ "("   ^ string_of_float v ^   ")"
-  | LiteralString v -> typ ^ "(\"" ^                 v ^ "\")"
-  | Lhs lhs         -> tostring_lhs n lhs
+  | Dynamic           -> "DYNAMIC "   ^ typ
+  | ZeroValue         -> "ZEROVALUE " ^ typ
+  | LiteralNil        -> typ ^ "(nil)"
+  | LiteralTrue       -> typ ^ "(true)"
+  | LiteralFalse      -> typ ^ "(false)"
+  | LiteralInt    v   -> typ ^ "("   ^ string_of_int   v ^   ")"
+  | LiteralFloat  v   -> typ ^ "("   ^ string_of_float v ^   ")"
+  | LiteralString v   -> typ ^ "(\"" ^                 v ^ "\")"
+  | LiteralArray exps -> let exps = List.map (tostring_exp n) exps in
+                         let exps = String.concat ", " exps in
+                         typ ^ " [" ^ exps ^ "]"
+  | Lhs lhs           -> tostring_lhs n lhs
 
 and tostring_lhs n lhs =
   let typ = tostring_typ lhs.typ in
@@ -490,11 +602,23 @@ let () =
       | x :: xs, y :: ys ->
         if x = y then eq (n + 1) (xs, ys) else false, n, x, y
     in
-    let (ok, line, l1, l2) = eq 1 (splitout, expected) in
-    if ok then
-      printf "Sem ok <%s>\n" name
-    else
-      printf "###\nSem error <%s> => line %d\n--- Output ---\n%s\n--- Expected ---\n%s\n--- Full Output ---\n%s\n"
-        name line l1 l2 output
+    let (ok, line, got, expected) = eq 1 (splitout, expected) in
+    if ok then None else Some (name, line, expected, got, output)
   in
-  List.iter f tests
+  let div = String.make 70 '=' ^ "\n" in
+  let div_got = String.make 66 '-' ^ " GOT\n" in
+  let div_expected = String.make 61 '-' ^ " EXPECTED\n" in
+  let div_output = String.make 58 '-' ^ " FULL OUTPUT\n" in
+  let showerr (name, line, expected, got, output) =
+    printf "<%s> DIFF IN LINE %d\n" name line;
+    printf "%s%s\n" div_expected expected;
+    printf "%s%s\n" div_got got;
+    printf "%s%s\n" div_output output;
+    print_string div
+  in
+  print_string div;
+  match List.filter_map f tests with
+  | [] -> print_string ("SEM TESTS OK!\n" ^ div)
+  | errs ->
+    printf "SEM TESTS - %d ERRORS\n%s" (List.length errs) div;
+    List.iter showerr errs

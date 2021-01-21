@@ -7,6 +7,7 @@ exception ErrNotImplemented
 exception ErrCompiler of string
 
 (* exception ErrUninitializedVal of Ast1.def *)
+exception ErrLiteralArraySameType of Lexing.position
 exception ErrGlobalVar of Lexing.position * id
 exception ErrIndexingNonArray of Ast1.lhs
 exception ErrInvalidVariable of Ast1.id
@@ -185,6 +186,7 @@ and sem_block st block =
 (* -------------------------------------------------------------------------- *)
 
 and sem_typ st typ = match typ with
+  | Ast1.Id (_, "Void")   -> Void
   | Ast1.Id (_, "Bool")   -> Bool
   | Ast1.Id (_, "Int")    -> Int
   | Ast1.Id (_, "Float")  -> Float
@@ -226,11 +228,23 @@ and sem_exp st exp = match exp with
   | Binary (lexp, op, rexp) -> raise ErrNotImplemented
   | Unary (op, exp) -> raise ErrNotImplemented
 
+  | Ast1.Literal Nil     p     -> {p = p; typ = Void;   u = LiteralNil     }
   | Ast1.Literal True    p     -> {p = p; typ = Bool;   u = LiteralTrue    }
   | Ast1.Literal False   p     -> {p = p; typ = Bool;   u = LiteralFalse   }
   | Ast1.Literal Int    (p, v) -> {p = p; typ = Int;    u = LiteralInt    v}
   | Ast1.Literal Float  (p, v) -> {p = p; typ = Float;  u = LiteralFloat  v}
   | Ast1.Literal String (p, v) -> {p = p; typ = String; u = LiteralString v}
+
+  | Ast1.Literal ArrayL (p, exps) ->
+    let exps = List.map (sem_exp st) exps in
+    let typ = (List.hd exps).typ in
+    let same_type typ (exp: exp) = match typecheck p typ exp.typ with
+      | exception _ -> false
+      | _ -> true
+    in
+    if List.for_all (same_type typ) exps
+      then {p = p; typ = Array typ; u = LiteralArray exps}
+      else raise (ErrLiteralArraySameType p)
 
   | Ast1.Lhs lhs ->
     let {p; typ; _} as lhs = sem_lhs st lhs in
@@ -276,17 +290,19 @@ and handle_error e =
       let ln = def.p.pos_lnum in
       let msg = sprintf "redeclaration of %s '%s' from line %d" in
       ln, msg kind id p.pos_lnum
+    | ErrLiteralArraySameType p ->
+      let msg = "array literal elements must have the same type" in
+      p.pos_lnum, msg
     | ErrGlobalVar ({pos_lnum; _}, id) ->
-      let ln = pos_lnum in
       let msg = sprintf "global variable '%s' must be defined as 'val'" in
-      ln, msg id
+      pos_lnum, msg id
     | ErrUntypedVarDec def          -> -1, "a"
-    | ErrUnknownType typ            -> -1, "a"
-    | ErrIndexingNonArray lhs       -> -1, "a"
+    | ErrUnknownType typ            -> -2, "a"
+    | ErrIndexingNonArray lhs       -> -3, "a"
     | ErrReassignedVal (p, id) ->
       let msg = sprintf "cannot reassign to variable '%s' because it was defined as a 'val'" id in
       p.pos_lnum, msg
-    | ErrRedeclaration (def1, def2) -> -1, "a"
+    | ErrRedeclaration (def1, def2) -> -4, "a"
     | ErrType (p, t1, t2) ->
       let t1 = typ_tostring t1 in
       let t2 = typ_tostring t2 in
@@ -296,7 +312,7 @@ and handle_error e =
       let (p, s) = id in
       let msg = sprintf "undefined variable '%s'" s in
       p.pos_lnum, msg
-    | ErrInvalidVariable id         -> -1, "a"
-    | e                             -> -1, Printexc.to_string e
+    | ErrInvalidVariable id         -> -5, "a"
+    | e                             -> -6, Printexc.to_string e
   in
   f ln s

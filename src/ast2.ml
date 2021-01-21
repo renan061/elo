@@ -58,11 +58,13 @@ and stmtU =
 and expU =
   | Dynamic
   | ZeroValue
+  | LiteralNil
   | LiteralTrue
   | LiteralFalse
   | LiteralInt of int
   | LiteralFloat of float
   | LiteralString of string
+  | LiteralArray of exp list
   | Lhs of lhs
 
 and lhsU =

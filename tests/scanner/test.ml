@@ -76,6 +76,7 @@ let tests = [(
     if elseif else while for
     not and or
     true false
+    nil
   |},
   [
     "VAR"; "VAL"; "FUN"; "REC";
@@ -83,6 +84,7 @@ let tests = [(
     "IF"; "ELSEIF"; "ELSE"; "WHILE"; "FOR";
     "NOT"; "AND"; "OR";
     "TRUE"; "FALSE";
+    "NIL";
   ]
 (* --------------------------------------------------------------------- *) ); (
   "numbers",
@@ -275,6 +277,7 @@ let step lexbuf = match Scanner.scan lexbuf with
   | AND _ -> "AND"
   | OR  _ -> "OR"
 
+  | NIL   _       -> "NIL"
   | TRUE  _       -> "TRUE"
   | FALSE _       -> "FALSE"
   | INT    (_, v) -> sprintf "INT(%s)" (string_of_int v)

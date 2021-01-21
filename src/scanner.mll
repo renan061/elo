@@ -87,6 +87,7 @@ rule scan = parse
   | "and" { AND (p lexbuf) }
   | "or"  { OR  (p lexbuf) }
 
+  | "nil"     { NIL   (p lexbuf)                    }
   | "true"    { TRUE  (p lexbuf)                    }
   | "false"   { FALSE (p lexbuf)                    }
   | ival as v { INT   (p lexbuf, int_of_string   v) }

@@ -40,7 +40,7 @@ module IR = struct
     | Record _ -> raise NotImplemented
 
   (* elo values *)
-  let void_ev    = Llvm.const_null void_et
+  let nil_ev     = Llvm.const_null void_et
   let true_ev    = Llvm.const_int bool_et 1
   let false_ev   = Llvm.const_int bool_et 0
   let int32_ev   = Llvm.const_int int32_et
@@ -102,11 +102,13 @@ and backend_local_var irs def = match def.u with
 and backend_exp irs {p; typ; u} = match u with
   | Dynamic           -> raise ErrDynamicExp
   | ZeroValue         -> IR.zero_value typ
+  | LiteralNil        -> IR.nil_ev
   | LiteralTrue       -> IR.true_ev
   | LiteralFalse      -> IR.false_ev
   | LiteralInt    v   -> IR.int32_ev   v
   | LiteralFloat  v   -> IR.float32_ev v
   | LiteralString v   -> IR.string_ev  v
+  | LiteralArray  _   -> raise NotImplemented
   | Lhs {p; typ; u} ->
     begin match u with
     | Id (_, def) ->

@@ -58,11 +58,13 @@ and call =
   | Constructor of typ * exp list
 
 and literal =
+  | Nil    of p
   | True   of p
   | False  of p
   | Int    of p * int
   | Float  of p * float
   | String of p * string
+  | ArrayL of p * exp list
 
 and lhs =
   | Id      of id
