@@ -58,17 +58,19 @@ and call =
   | Constructor of typ * exp list
 
 and literal =
-  | Nil    of p
-  | True   of p
-  | False  of p
-  | Int    of p * int
-  | Float  of p * float
-  | String of p * string
-  | ArrayL of p * exp list
+  | Nil     of p
+  | True    of p
+  | False   of p
+  | Int     of p * int
+  | Float   of p * float
+  | String  of p * string
+  | ArrayL  of p * exp list
+  | RecordL of id * stmt list
 
 and lhs =
-  | Id      of id
-  | Indexed of p * exp * exp
+  | Id    of id
+  | Index of p * exp * exp
+  | Field of p * exp * id
 
 (* todo: call *)
 

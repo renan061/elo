@@ -100,15 +100,16 @@ and backend_local_var irs def = match def.u with
   | _ -> raise (ErrBackend "var._")
 
 and backend_exp irs {p; typ; u} = match u with
-  | Dynamic           -> raise ErrDynamicExp
-  | ZeroValue         -> IR.zero_value typ
-  | LiteralNil        -> IR.nil_ev
-  | LiteralTrue       -> IR.true_ev
-  | LiteralFalse      -> IR.false_ev
-  | LiteralInt    v   -> IR.int32_ev   v
-  | LiteralFloat  v   -> IR.float32_ev v
-  | LiteralString v   -> IR.string_ev  v
-  | LiteralArray  _   -> raise NotImplemented
+  | Dynamic         -> raise ErrDynamicExp
+  | ZeroValue       -> IR.zero_value typ
+  | LiteralNil      -> IR.nil_ev
+  | LiteralTrue     -> IR.true_ev
+  | LiteralFalse    -> IR.false_ev
+  | LiteralInt    v -> IR.int32_ev   v
+  | LiteralFloat  v -> IR.float32_ev v
+  | LiteralString v -> IR.string_ev  v
+  | LiteralArray  _ -> raise NotImplemented
+  | LiteralRecord _ -> raise NotImplemented
   | Lhs {p; typ; u} ->
     begin match u with
     | Id (_, def) ->
@@ -117,5 +118,6 @@ and backend_exp irs {p; typ; u} = match u with
       | Var _ -> Llvm.build_load def.llv IR.tmp irs.b
       | _     -> raise (ErrBackend "exp.lhs._")
       end
-    | Indexed (arr, idx) -> raise NotImplemented
+    | Index _ -> raise NotImplemented
+    | Field _ -> raise NotImplemented
     end

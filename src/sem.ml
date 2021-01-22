@@ -6,15 +6,15 @@ exception ErrNotImplemented
 
 exception ErrCompiler of string
 
-(* exception ErrUninitializedVal of Ast1.def *)
-exception ErrLiteralArraySameType of Lexing.position
+exception ErrFieldNotFound
 exception ErrGlobalVar of Lexing.position * id
 exception ErrIndexingNonArray of Ast1.lhs
-exception ErrInvalidVariable of Ast1.id
+exception ErrInvalidTypeForRecordLiteral
+exception ErrLiteralArraySameType of Lexing.position
 exception ErrReassignedVal of Lexing.position * id
 exception ErrRecordOnlyVariables of Ast1.def
-exception ErrRedeclaration of Ast1.def * Ast2.def
 exception ErrType of Lexing.position * Ast2.typ * Ast2.typ
+exception ErrUndefinedRecord of Lexing.position * Ast2.id
 exception ErrUndefinedVariable of Ast1.id
 exception ErrUnknownType of Ast1.typ
 exception ErrUntypedVarDec of Ast1.def
@@ -78,6 +78,8 @@ let rec typecheck p t1 t2 =
   | Array t1, Array t2 -> begin try typecheck p t1 t2 with _ -> raise err end
   | Record id1, Record id2 when id1 = id2 -> ()
   | _ -> raise err
+
+
 
 (* TODO move to Ast2 module *)
 let rec typ_tostring = function
@@ -246,6 +248,19 @@ and sem_exp st exp = match exp with
       then {p = p; typ = Array typ; u = LiteralArray exps}
       else raise (ErrLiteralArraySameType p)
 
+  | Ast1.Literal RecordL ((p, id), asgs) ->
+    let rec_def = match st#lookup id with
+      | None -> raise @@ ErrUndefinedRecord (p, id)
+      | Some {u; _} as def ->
+        begin match u with
+        | Rec _ -> def
+        | _ -> raise ErrInvalidTypeForRecordLiteral
+        end
+    in
+    (* TODO *)
+    raise ErrNotImplemented
+    (* {p = p; typ = Array typ; u = LiteralArray exps} *)
+
   | Ast1.Lhs lhs ->
     let {p; typ; _} as lhs = sem_lhs st lhs in
     {p = p; typ = typ; u = Lhs lhs}
@@ -255,25 +270,47 @@ and sem_exp st exp = match exp with
 (* -------------------------------------------------------------------------- *)
 
 and sem_lhs st lhs = match lhs with
-  | Id (p, id2 as id1) ->
+  | Id (p, id2 as id1) -> (* id *)
     let def = match st#lookup id2 with
       | None     -> raise (ErrUndefinedVariable id1)
       | Some def -> def
     in
     let _ = match def.u with
       | Val _ | Var _ -> ()
-      | _             -> raise (ErrInvalidVariable id1)
+      | _             -> raise (ErrCompiler "sem_lhs.Id")
     in
     {p = p; typ = def.typ; u = Id (id2, def)}
 
-  | Indexed (p, arr, index) ->
+  | Index (p, arr, idx) -> (* arr[idx] *)
     let arr = sem_exp st arr in
-    let index = sem_exp st index in
+    let idx = sem_exp st idx in
     let typ = match arr.typ with
       | Array typ -> typ
-      | _         -> raise (ErrIndexingNonArray lhs)
+      | _ -> raise (ErrIndexingNonArray lhs)
     in
-    {p = p; typ = typ; u = Indexed (arr, index)}
+    {p = p; typ = typ; u = Index (arr, idx)}
+
+  | Field (p, exp, (_, field)) -> (* exp.field *)
+    let exp = sem_exp st exp in
+    let rec_id = match exp.typ with
+      | Record id -> id
+      | _ -> raise ErrFieldNotFound
+    in
+    let rec_def = match st#lookup rec_id with
+      | None -> raise @@ ErrUndefinedRecord (p, rec_id)
+      | Some def -> def
+    in
+    let found = match rec_def.u with
+      | Rec defs ->
+        let f field {id; _} = field = id in
+        List.find_opt (f field) defs
+      | _ -> raise (ErrCompiler "sem_lhs.Field")
+    in
+    let def = match found with
+      | None -> raise ErrFieldNotFound
+      | Some def -> def
+    in
+    {p = p; typ = def.typ; u = Field (exp, def)}
 
 (* -------------------------------------------------------------------------- *)
 
@@ -290,19 +327,19 @@ and handle_error e =
       let ln = def.p.pos_lnum in
       let msg = sprintf "redeclaration of %s '%s' from line %d" in
       ln, msg kind id p.pos_lnum
-    | ErrLiteralArraySameType p ->
-      let msg = "array literal elements must have the same type" in
-      p.pos_lnum, msg
     | ErrGlobalVar ({pos_lnum; _}, id) ->
       let msg = sprintf "global variable '%s' must be defined as 'val'" in
       pos_lnum, msg id
-    | ErrUntypedVarDec def          -> -1, "a"
-    | ErrUnknownType typ            -> -2, "a"
-    | ErrIndexingNonArray lhs       -> -3, "a"
+    | ErrIndexingNonArray lhs -> -3, "a"
+    | ErrInvalidTypeForRecordLiteral -> -33, "a"
+    | ErrLiteralArraySameType p ->
+      let msg = "array literal elements must have the same type" in
+      p.pos_lnum, msg
+    | ErrUntypedVarDec def -> -1, "a"
+    | ErrUnknownType typ -> -2, "a"
     | ErrReassignedVal (p, id) ->
       let msg = sprintf "cannot reassign to variable '%s' because it was defined as a 'val'" id in
       p.pos_lnum, msg
-    | ErrRedeclaration (def1, def2) -> -4, "a"
     | ErrType (p, t1, t2) ->
       let t1 = typ_tostring t1 in
       let t2 = typ_tostring t2 in
@@ -312,7 +349,6 @@ and handle_error e =
       let (p, s) = id in
       let msg = sprintf "undefined variable '%s'" s in
       p.pos_lnum, msg
-    | ErrInvalidVariable id         -> -5, "a"
     | e                             -> -6, Printexc.to_string e
   in
   f ln s

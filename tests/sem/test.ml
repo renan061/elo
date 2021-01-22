@@ -9,6 +9,12 @@
 *)
 
 (*
+  TODO
+
+  uninitialized val
+*)
+
+(*
 "type checking - Bool != Void"
 "type checking - Bool != Int"
 "type checking - Bool != Float"
@@ -94,6 +100,12 @@ let tests = [(
     val a: Void = 1;
   |}, {|
     error in line 2: mismatching types: expected Void, got Int
+  (*-------------------------------------------------------------------*) |}); (
+  "TESTE TESTE TESTE TESTE", {|
+    record R {}
+    val a = R {};
+  |}, {|
+    TODO TODO TODO TODO TODO TODO
   (*-------------------------------------------------------------------*) |}); (
   "type checking - Void != Float", {|
     val a: Void = 5.5;
@@ -198,8 +210,7 @@ let tests = [(
   (*-------------------------------------------------------------------*) |}); (
   "function definition - recursion visibility", {|
     function f {
-      // TODO
-      // f();
+      f();
     }
   |}, {|
     DEF FUNCTION f () : VOID {}
@@ -556,23 +567,33 @@ and tostring_exp n (exp: exp) =
   | LiteralInt    v   -> typ ^ "("   ^ string_of_int   v ^   ")"
   | LiteralFloat  v   -> typ ^ "("   ^ string_of_float v ^   ")"
   | LiteralString v   -> typ ^ "(\"" ^                 v ^ "\")"
-  | LiteralArray exps -> let exps = List.map (tostring_exp n) exps in
-                         let exps = String.concat ", " exps in
-                         typ ^ " [" ^ exps ^ "]"
-  | Lhs lhs           -> tostring_lhs n lhs
+
+  | LiteralArray exps ->
+    let exps = List.map (tostring_exp n) exps in
+    let exps = String.concat ", " exps in
+    typ ^ " [" ^ exps ^ "]"
+
+  | LiteralRecord (id, stmts) ->
+    let stmts = List.map (tostring_stmt n) stmts in
+    let stmts = String.concat "\n" stmts in
+    id ^ "{\n" ^ stmts ^ "}\n"
+
+  | Lhs lhs -> tostring_lhs n lhs
 
 and tostring_lhs n lhs =
   let typ = tostring_typ lhs.typ in
   match lhs.u with
   | Id (id, _) ->
     "ID " ^ id ^ ": " ^ typ
-  | Indexed (arr, idx) ->
+  | Index (arr, idx) ->
     let n = n + 1 in
     let arr = tostring_exp n arr in
     let idx = tostring_exp n idx in
     "INDEXED: " ^ typ ^ "\n" ^
       tabs n ^ "ARRAY => " ^ arr ^ "\n" ^
       tabs n ^ "INDEX => " ^ idx
+  | Field (exp, def) ->
+    "FIELD " ^ def.id ^ " OF " ^ (tostring_exp n exp)
 
 let () =
   let f (name, input, expected) =

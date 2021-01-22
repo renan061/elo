@@ -1,5 +1,6 @@
 %{
   open Ast1
+  exception ErrCompiler of string
 %}
 
 %token <Lexing.position> LPAR "(" RPAR ")"
@@ -121,6 +122,7 @@ exp : exp binop exp       { Binary ($1, $2, $3) }
 
 simple_exp : primitive_literal { Literal $1 }
            | array_literal     { Literal $1 }
+           | record_literal    { Literal $1 }
            | lhs               { Lhs     $1 }
            | call              { Call    $1 }
            | "(" exp ")"       { $2         }
@@ -134,7 +136,20 @@ primitive_literal : NIL    { Nil   $1                         }
 
 array_literal : "[" separated_nonempty_list(",", exp) "]" { ArrayL ($1, $2) }
 
-lhs : LID { Id $1 }
+record_literal : UID "{" separated_list(",", recasg) "}"
+  {
+    let f = function
+      | Asg (p, (Id field), _, exp) ->
+        let exp = Lhs (Id $1) in
+        let lhs = Field (p, exp, field) in
+        Asg (p, lhs, AsgSimple, exp)
+      | _ -> raise (ErrCompiler "parser.record_literal")
+    in
+    RecordL ($1, List.map f $3)
+  }
+
+lhs : LID                { Id $1 }
+    | simple_exp "." LID { Field ($2, $1, $3) }
 
 call : LID args                { Function    ($1, $2)     }
      | simple_exp "." LID args { Method      ($1, $3, $4) }
@@ -142,12 +157,14 @@ call : LID args                { Function    ($1, $2)     }
 
 (* -------------------------------------------------------------------------- *)
 
+args : "(" separated_list(",", exp) ")" { $2 }
+
 params : (* empty *)                                 { [] }
        | "(" separated_nonempty_list(",", param) ")" { $2 }
 
 param : LID typedec { Val (fst $1, $1, Some $2, Dynamic $2) }
 
-args : "(" separated_list(",", exp) ")" { $2 }
+recasg : LID "=" exp { Asg ($2, Id $1, AsgSimple, $3) }
 
 (* type declaration *)
 typedec : ":" typ { $2 }
