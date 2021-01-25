@@ -112,7 +112,7 @@ and backend_exp irs {p; typ; u} = match u with
   | LiteralRecord _ -> raise NotImplemented
   | Lhs {p; typ; u} ->
     begin match u with
-    | Id (_, def) ->
+    | Id def ->
       begin match def.u with
       | Val _ -> def.llv
       | Var _ -> Llvm.build_load def.llv IR.tmp irs.b

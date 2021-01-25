@@ -75,7 +75,8 @@ let tests = [(
     val e: String = "string";
     val f1: [Int] = [1, 2, 3];
     val f2: [[String]] = [["hello", "world"]];
-    val g: R = R{};
+    record R {}
+    val g = R{};
   |}, {|
     DEF VAL a : VOID =
       VOID(nil)
@@ -93,19 +94,14 @@ let tests = [(
       [INT] [INT(1), INT(2), INT(3)]
     DEF VAL f2 : [[STRING]] =
       [[STRING]] [[STRING] [STRING("hello"), STRING("world")]]
+    DEF RECORD R {}
     DEF VAL g : RECORD R =
-      RECORD R {}
+      R {}
   (*-------------------------------------------------------------------*) |}); (
   "type checking - Void != Int", {|
     val a: Void = 1;
   |}, {|
     error in line 2: mismatching types: expected Void, got Int
-  (*-------------------------------------------------------------------*) |}); (
-  "TESTE TESTE TESTE TESTE", {|
-    record R {}
-    val a = R {};
-  |}, {|
-    TODO TODO TODO TODO TODO TODO
   (*-------------------------------------------------------------------*) |}); (
   "type checking - Void != Float", {|
     val a: Void = 5.5;
@@ -126,7 +122,7 @@ let tests = [(
     record R {}
     val a: Void = R{};
   |}, {|
-    error in line 2: mismatching types: expected Void, got R
+    error in line 3: mismatching types: expected Void, got R
 (* ------------------------------------------------------------------- *) |}); (
 (* GLOBAL VARIABLES -------------------------------------------------- *)
 (* ------------------------------------------------------------------- *)
@@ -573,17 +569,23 @@ and tostring_exp n (exp: exp) =
     let exps = String.concat ", " exps in
     typ ^ " [" ^ exps ^ "]"
 
-  | LiteralRecord (id, stmts) ->
-    let stmts = List.map (tostring_stmt n) stmts in
-    let stmts = String.concat "\n" stmts in
-    id ^ "{\n" ^ stmts ^ "}\n"
+  | LiteralRecord (def, fields) ->
+    let f n (lhs, exp) = match lhs.u with
+      | Id def -> (tabs n) ^ def.id ^ " = " ^ (tostring_exp n exp) ^ "\n"
+      | _ -> raise ErrPrinter
+    in
+    let n = n + 1 in
+    let fields = List.map (f @@ n + 1) fields in
+    let fields = String.concat "" fields in
+    let fields = if fields = "" then "" else "\n" ^ fields ^ (tabs n) in
+    def.id ^ " {" ^ fields ^ "}"
 
   | Lhs lhs -> tostring_lhs n lhs
 
 and tostring_lhs n lhs =
   let typ = tostring_typ lhs.typ in
   match lhs.u with
-  | Id (id, _) ->
+  | Id {id; _} ->
     "ID " ^ id ^ ": " ^ typ
   | Index (arr, idx) ->
     let n = n + 1 in

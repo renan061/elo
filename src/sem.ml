@@ -6,15 +6,15 @@ exception ErrNotImplemented
 
 exception ErrCompiler of string
 
-exception ErrFieldNotFound
+exception ErrExpectedArray of Ast1.lhs
+exception ErrExpectedRecord of Lexing.position * id * typ
+exception ErrFieldNotFound of Lexing.position * id * def
 exception ErrGlobalVar of Lexing.position * id
-exception ErrIndexingNonArray of Ast1.lhs
-exception ErrInvalidTypeForRecordLiteral
 exception ErrLiteralArraySameType of Lexing.position
 exception ErrReassignedVal of Lexing.position * id
 exception ErrRecordOnlyVariables of Ast1.def
-exception ErrType of Lexing.position * Ast2.typ * Ast2.typ
-exception ErrUndefinedRecord of Lexing.position * Ast2.id
+exception ErrType of Lexing.position * typ * typ
+exception ErrUndefinedRecord of Lexing.position * id
 exception ErrUndefinedVariable of Ast1.id
 exception ErrUnknownType of Ast1.typ
 exception ErrUntypedVarDec of Ast1.def
@@ -64,12 +64,12 @@ end
 let can_be_reassigned {p; u; _} =
   let ok = (true, ErrCompiler "can_be_reassigned") in
   match u with
-  | Id (id, def) ->
-    begin match def.u with
+  | Id {id; u; _} ->
+    begin match u with
     | Val _ -> (false, ErrReassignedVal (p, id))
     | _ -> ok
     end
-  | _ -> ok
+  | _ -> raise ErrNotImplemented
 
 let rec typecheck p t1 t2 =
   let err = ErrType (p, t1, t2) in
@@ -79,7 +79,18 @@ let rec typecheck p t1 t2 =
   | Record id1, Record id2 when id1 = id2 -> ()
   | _ -> raise err
 
+let find_record st p id = match st#lookup id with
+  | None -> raise @@ ErrUndefinedRecord (p, id)
+  | Some (def: def) ->
+    begin match def.u with
+    | Rec fields -> (def, fields)
+    | _ -> raise @@ ErrExpectedRecord (p, id, def.typ)
+    end
 
+let lookup_record (fields: def list) id (p, rec_) =
+  match List.find_opt (fun field -> field.id = id) fields with
+  | None -> raise @@ ErrFieldNotFound (p, id, rec_)
+  | Some (field: def) -> field
 
 (* TODO move to Ast2 module *)
 let rec typ_tostring = function
@@ -248,18 +259,19 @@ and sem_exp st exp = match exp with
       then {p = p; typ = Array typ; u = LiteralArray exps}
       else raise (ErrLiteralArraySameType p)
 
-  | Ast1.Literal RecordL ((p, id), asgs) ->
-    let rec_def = match st#lookup id with
-      | None -> raise @@ ErrUndefinedRecord (p, id)
-      | Some {u; _} as def ->
-        begin match u with
-        | Rec _ -> def
-        | _ -> raise ErrInvalidTypeForRecordLiteral
-        end
+  | Ast1.Literal RecordL ((p, id), fields) ->
+    let (rec_def, rec_fields) = find_record st p id in
+    let f ((p, id), exp) =
+      let exp = sem_exp st exp in
+      let (field: def) = lookup_record rec_fields id (p, rec_def) in
+      let lhs = {p = p; typ = field.typ; u = Id field} in
+      let ok, err = can_be_reassigned lhs in
+      if not ok then raise err;
+      typecheck p lhs.typ exp.typ;
+      (lhs, exp)
     in
-    (* TODO *)
-    raise ErrNotImplemented
-    (* {p = p; typ = Array typ; u = LiteralArray exps} *)
+    let fields = List.map f fields in
+    {p = p; typ = rec_def.typ; u = LiteralRecord (rec_def, fields)}
 
   | Ast1.Lhs lhs ->
     let {p; typ; _} as lhs = sem_lhs st lhs in
@@ -272,21 +284,17 @@ and sem_exp st exp = match exp with
 and sem_lhs st lhs = match lhs with
   | Id (p, id2 as id1) -> (* id *)
     let def = match st#lookup id2 with
-      | None     -> raise (ErrUndefinedVariable id1)
+      | None -> raise (ErrUndefinedVariable id1)
       | Some def -> def
     in
-    let _ = match def.u with
-      | Val _ | Var _ -> ()
-      | _             -> raise (ErrCompiler "sem_lhs.Id")
-    in
-    {p = p; typ = def.typ; u = Id (id2, def)}
+    {p = p; typ = def.typ; u = Id def}
 
   | Index (p, arr, idx) -> (* arr[idx] *)
     let arr = sem_exp st arr in
     let idx = sem_exp st idx in
     let typ = match arr.typ with
       | Array typ -> typ
-      | _ -> raise (ErrIndexingNonArray lhs)
+      | _ -> raise (ErrExpectedArray lhs)
     in
     {p = p; typ = typ; u = Index (arr, idx)}
 
@@ -294,23 +302,11 @@ and sem_lhs st lhs = match lhs with
     let exp = sem_exp st exp in
     let rec_id = match exp.typ with
       | Record id -> id
-      | _ -> raise ErrFieldNotFound
+      | _ -> raise @@ ErrExpectedRecord (p, field, exp.typ)
     in
-    let rec_def = match st#lookup rec_id with
-      | None -> raise @@ ErrUndefinedRecord (p, rec_id)
-      | Some def -> def
-    in
-    let found = match rec_def.u with
-      | Rec defs ->
-        let f field {id; _} = field = id in
-        List.find_opt (f field) defs
-      | _ -> raise (ErrCompiler "sem_lhs.Field")
-    in
-    let def = match found with
-      | None -> raise ErrFieldNotFound
-      | Some def -> def
-    in
-    {p = p; typ = def.typ; u = Field (exp, def)}
+    let (rec_def, rec_fields) = find_record st p rec_id in
+    let field_def = lookup_record rec_fields field (p, rec_def) in
+    {p = p; typ = field_def.typ; u = Field (exp, field_def)}
 
 (* -------------------------------------------------------------------------- *)
 
@@ -327,11 +323,11 @@ and handle_error e =
       let ln = def.p.pos_lnum in
       let msg = sprintf "redeclaration of %s '%s' from line %d" in
       ln, msg kind id p.pos_lnum
+    | ErrExpectedArray lhs -> -33, "a"
+    | ErrExpectedRecord (p, id, typ) -> p.pos_lnum, "a"
     | ErrGlobalVar ({pos_lnum; _}, id) ->
       let msg = sprintf "global variable '%s' must be defined as 'val'" in
       pos_lnum, msg id
-    | ErrIndexingNonArray lhs -> -3, "a"
-    | ErrInvalidTypeForRecordLiteral -> -33, "a"
     | ErrLiteralArraySameType p ->
       let msg = "array literal elements must have the same type" in
       p.pos_lnum, msg

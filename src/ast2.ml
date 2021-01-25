@@ -65,10 +65,10 @@ and expU =
   | LiteralFloat of float
   | LiteralString of string
   | LiteralArray of exp list
-  | LiteralRecord of id * stmt list
+  | LiteralRecord of def * (lhs * exp) list
   | Lhs of lhs
 
 and lhsU =
-  | Id of id * def
+  | Id of def
   | Index of exp * exp
   | Field of exp * def

@@ -65,7 +65,7 @@ and literal =
   | Float   of p * float
   | String  of p * string
   | ArrayL  of p * exp list
-  | RecordL of id * stmt list
+  | RecordL of id * (id * exp) list
 
 and lhs =
   | Id    of id
