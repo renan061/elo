@@ -1,15 +1,6 @@
 
 type id = string
 
-type typ =
-  | Void
-  | Bool
-  | Int
-  | Float
-  | String
-  | Array of typ
-  | Record of id
-
 (* nodes *)
 
 type ast = (def list, string) result
@@ -17,7 +8,6 @@ type ast = (def list, string) result
 and def = {
   p: Lexing.position;
   id: id;
-  typ: typ;
   mutable u: defU; (* mutated only during the semantic analysis *)
 
   mutable llv: Llvm.llvalue;
@@ -47,9 +37,9 @@ and lhs = {
 (* union types *)
 
 and defU =
-  | Val of exp
-  | Var of exp
-  | Fun of def list * block
+  | Val of typ * exp
+  | Var of typ * exp
+  | Fun of def list * typ * block
   | Rec of def list
 
 and stmtU =
@@ -65,10 +55,19 @@ and expU =
   | LiteralFloat of float
   | LiteralString of string
   | LiteralArray of exp list
-  | LiteralRecord of def * (lhs * exp) list
+  | LiteralRecord of (lhs * exp) list
   | Lhs of lhs
 
 and lhsU =
   | Id of def
   | Index of exp * exp
   | Field of exp * def
+
+and typ =
+  | Void
+  | Bool
+  | Int
+  | Float
+  | String
+  | Array of typ
+  | Record of def

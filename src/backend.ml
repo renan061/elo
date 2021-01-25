@@ -60,16 +60,16 @@ let rec compile ast2 =
   m
 
 and backend_top irs (def: def) = match def.u with
-  | Val exp ->
-    def.llv <- Llvm.declare_global (IR.type_from def.typ) def.id irs.m
+  | Val (typ, exp) ->
+    def.llv <- Llvm.declare_global (IR.type_from typ) def.id irs.m
     (* TODO: exp *)
 
-  | Var exp -> raise (ErrBackend "top.var")
+  | Var (typ, exp) -> raise (ErrBackend "top.var")
 
-  | Fun (params, block) ->
-    let retT = IR.type_from def.typ in
-    let f ({typ; u; _}: def) = match u with
-      | Val _ -> IR.type_from typ
+  | Fun (params, typ, block) ->
+    let retT = IR.type_from typ in
+    let f (def: def) = match def.u with
+      | Val (typ, _) -> IR.type_from typ
       | _ -> raise (ErrBackend "top.fun._")
     in
     let paramsT = Array.of_list (List.map f params) in
@@ -88,12 +88,12 @@ and backend_block irs block =
   List.iter f block
 
 and backend_local_var irs def = match def.u with
-  | Val exp ->
+  | Val (typ, exp) ->
     def.llv <- backend_exp irs exp
 
-  | Var exp ->
+  | Var (typ, exp) ->
     let v = backend_exp irs exp in
-    let p = Llvm.build_alloca (IR.type_from def.typ) IR.tmp irs.b in
+    let p = Llvm.build_alloca (IR.type_from typ) IR.tmp irs.b in
     let _ = Llvm.build_store v p irs.b in
     def.llv <- p
 

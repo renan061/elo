@@ -10,56 +10,8 @@
 
 (*
   TODO
-
-  uninitialized val
-*)
-
-(*
-"type checking - Bool != Void"
-"type checking - Bool != Int"
-"type checking - Bool != Float"
-"type checking - Bool != String"
-"type checking - Bool != Array"
-"type checking - Bool != Record"
-
-"type checking - Int != Void"
-"type checking - Int != Bool"
-"type checking - Int != Float"
-"type checking - Int != String"
-"type checking - Int != Array"
-"type checking - Int != Record"
-
-"type checking - Float != Void"
-"type checking - Float != Bool"
-"type checking - Float != Int"
-"type checking - Float != String"
-"type checking - Float != Array"
-"type checking - Float != Record"
-
-"type checking - String != Void"
-"type checking - String != Bool"
-"type checking - String != Int"
-"type checking - String != Float"
-"type checking - String != Array"
-"type checking - String != Record"
-
-"type checking - Array != Void"
-"type checking - Array != Bool"
-"type checking - Array != Int"
-"type checking - Array != Float"
-"type checking - Array != String"
-"type checking - Array != Record"
-
-"type checking - Record != Void"
-"type checking - Record != Bool"
-"type checking - Record != Int"
-"type checking - Record != Float"
-"type checking - Record != String"
-"type checking - Record != Array"
-
-"type checking - Array [A] != Array [B]"
-"type checking - Array [[A]] != Array [A]"
-"type checking - Record A != Record B"
+  - separate tests into different files
+  - uninitialized val
 *)
 
 let tests = [(
@@ -123,6 +75,219 @@ let tests = [(
     val a: Void = R{};
   |}, {|
     error in line 3: mismatching types: expected Void, got R
+  (*-------------------------------------------------------------------*) |}); (
+  "type checking - Bool != Void", {|
+    val a: Bool = nil;
+  |}, {|
+    error in line 2: mismatching types: expected Bool, got Void
+  (*-------------------------------------------------------------------*) |}); (
+  "type checking - Bool != Int", {|
+    val a: Bool = 1;
+  |}, {|
+    error in line 2: mismatching types: expected Bool, got Int
+  (*-------------------------------------------------------------------*) |}); (
+  "type checking - Bool != Float", {|
+    val a: Bool = 5.5;
+  |}, {|
+    error in line 2: mismatching types: expected Bool, got Float
+  (*-------------------------------------------------------------------*) |}); (
+  "type checking - Bool != String", {|
+    val a: Bool = "";
+  |}, {|
+    error in line 2: mismatching types: expected Bool, got String
+  (*-------------------------------------------------------------------*) |}); (
+  "type checking - Bool != Array", {|
+    val a: Bool = [1];
+  |}, {|
+    error in line 2: mismatching types: expected Bool, got [Int]
+  (*-------------------------------------------------------------------*) |}); (
+  "type checking - Bool != Record", {|
+    record R {}
+    val a: Bool = R{};
+  |}, {|
+    error in line 3: mismatching types: expected Bool, got R
+  (*-------------------------------------------------------------------*) |}); (
+  "type checking - Int != Void", {|
+    val a: Int = nil;
+  |}, {|
+    error in line 2: mismatching types: expected Int, got Void
+  (*-------------------------------------------------------------------*) |}); (
+  "type checking - Int != Bool", {|
+    val a: Int = true;
+  |}, {|
+    error in line 2: mismatching types: expected Int, got Bool
+  (*-------------------------------------------------------------------*) |}); (
+  "type checking - Int != Float", {|
+    val a: Int = 5.5;
+  |}, {|
+    error in line 2: mismatching types: expected Int, got Float
+  (*-------------------------------------------------------------------*) |}); (
+  "type checking - Int != String", {|
+    val a: Int = "";
+  |}, {|
+    error in line 2: mismatching types: expected Int, got String
+  (*-------------------------------------------------------------------*) |}); (
+  "type checking - Int != Array", {|
+    val a: Int = [1];
+  |}, {|
+    error in line 2: mismatching types: expected Int, got [Int]
+  (*-------------------------------------------------------------------*) |}); (
+  "type checking - Int != Record", {|
+    record R {}
+    val a: Int = R{};
+  |}, {|
+    error in line 3: mismatching types: expected Int, got R
+  (*-------------------------------------------------------------------*) |}); (
+  "type checking - Float != Void", {|
+    val a: Float = nil;
+  |}, {|
+    error in line 2: mismatching types: expected Float, got Void
+  (*-------------------------------------------------------------------*) |}); (
+  "type checking - Float != Bool", {|
+    val a: Float = true;
+  |}, {|
+    error in line 2: mismatching types: expected Float, got Bool
+  (*-------------------------------------------------------------------*) |}); (
+  "type checking - Float != Int", {|
+    val a: Float = 1;
+  |}, {|
+    error in line 2: mismatching types: expected Float, got Int
+  (*-------------------------------------------------------------------*) |}); (
+  "type checking - Float != String", {|
+    val a: Float = "";
+  |}, {|
+    error in line 2: mismatching types: expected Float, got String
+  (*-------------------------------------------------------------------*) |}); (
+  "type checking - Float != Array", {|
+    val a: Float = [1];
+  |}, {|
+    error in line 2: mismatching types: expected Float, got [Int]
+  (*-------------------------------------------------------------------*) |}); (
+  "type checking - Float != Record", {|
+    record R {}
+    val a: Float = R{};
+  |}, {|
+    error in line 3: mismatching types: expected Float, got R
+  (*-------------------------------------------------------------------*) |}); (
+  "type checking - String != Void", {|
+    val a: String = nil;
+  |}, {|
+    error in line 2: mismatching types: expected String, got Void
+  (*-------------------------------------------------------------------*) |}); (
+  "type checking - String != Bool", {|
+    val a: String = true;
+  |}, {|
+    error in line 2: mismatching types: expected String, got Bool
+  (*-------------------------------------------------------------------*) |}); (
+  "type checking - String != Int", {|
+    val a: String = 1;
+  |}, {|
+    error in line 2: mismatching types: expected String, got Int
+  (*-------------------------------------------------------------------*) |}); (
+  "type checking - String != Float", {|
+    val a: String = 5.5;
+  |}, {|
+    error in line 2: mismatching types: expected String, got Float
+  (*-------------------------------------------------------------------*) |}); (
+  "type checking - String != Array", {|
+    val a: String = [1];
+  |}, {|
+    error in line 2: mismatching types: expected String, got [Int]
+  (*-------------------------------------------------------------------*) |}); (
+  "type checking - String != Record", {|
+    record R {}
+    val a: String = R{};
+  |}, {|
+    error in line 3: mismatching types: expected String, got R
+  (*-------------------------------------------------------------------*) |}); (
+  "type checking - Array != Void", {|
+    val a: [Void] = nil;
+  |}, {|
+    error in line 2: mismatching types: expected [Void], got Void
+  (*-------------------------------------------------------------------*) |}); (
+  "type checking - Array != Bool", {|
+    val a: [Int] = true;
+  |}, {|
+    error in line 2: mismatching types: expected [Int], got Bool
+  (*-------------------------------------------------------------------*) |}); (
+  "type checking - Array != Int", {|
+    val a: [Float] = 1;
+  |}, {|
+    error in line 2: mismatching types: expected [Float], got Int
+  (*-------------------------------------------------------------------*) |}); (
+  "type checking - Array != Float", {|
+    val a: [Float] = 5.5;
+  |}, {|
+    error in line 2: mismatching types: expected [Float], got Float
+  (*-------------------------------------------------------------------*) |}); (
+  "type checking - Array != String", {|
+    val a: [Int] = "string";
+  |}, {|
+    error in line 2: mismatching types: expected [Int], got String
+  (*-------------------------------------------------------------------*) |}); (
+  "type checking - Array != Record", {|
+    record R {}
+    val a: [R] = R{};
+  |}, {|
+    error in line 3: mismatching types: expected [R], got R
+  (*-------------------------------------------------------------------*) |}); (
+  "type checking - Record != Void", {|
+    record R {}
+    val a: R = nil;
+  |}, {|
+    error in line 3: mismatching types: expected R, got Void
+  (*-------------------------------------------------------------------*) |}); (
+  "type checking - Record != Bool", {|
+    record R {}
+    val a: R = true;
+  |}, {|
+    error in line 3: mismatching types: expected R, got Bool
+  (*-------------------------------------------------------------------*) |}); (
+  "type checking - Record != Int", {|
+    record R {}
+    val a: R = 1;
+  |}, {|
+    error in line 3: mismatching types: expected R, got Int
+  (*-------------------------------------------------------------------*) |}); (
+  "type checking - Record != Float", {|
+    record R {}
+    val a: R = 5.5;
+  |}, {|
+    error in line 3: mismatching types: expected R, got Float
+  (*-------------------------------------------------------------------*) |}); (
+  "type checking - Record != String", {|
+    record R {}
+    val a: R = "string";
+  |}, {|
+    error in line 3: mismatching types: expected R, got String
+  (*-------------------------------------------------------------------*) |}); (
+  "type checking - Record != Array", {|
+    record R {}
+    val a: R = [R{}];
+  |}, {|
+    error in line 3: mismatching types: expected R, got [R]
+  (*-------------------------------------------------------------------*) |}); (
+  "type checking - Array [A] != Array [B]", {|
+    val a: [Int] = [5.5];
+  |}, {|
+    error in line 2: mismatching types: expected [Int], got [Float]
+  (*-------------------------------------------------------------------*) |}); (
+  "type checking - Array [[A]] != Array [A]", {|
+    val a: [[Int]] = [1, 2];
+  |}, {|
+    error in line 2: mismatching types: expected [[Int]], got [Int]
+  (*-------------------------------------------------------------------*) |}); (
+  "type checking - Array [A] != Array [[A]]", {|
+    val a: [Int] = [[1], [2]];
+  |}, {|
+    error in line 2: mismatching types: expected [Int], got [[Int]]
+  (*-------------------------------------------------------------------*) |}); (
+  "type checking - Record A != Record B", {|
+    record X {}
+    record Y {}
+    val a: X = Y{};
+  |}, {|
+    error in line 4: mismatching types: expected X, got Y
 (* ------------------------------------------------------------------- *) |}); (
 (* GLOBAL VARIABLES -------------------------------------------------- *)
 (* ------------------------------------------------------------------- *)
@@ -484,8 +649,8 @@ and tostring_top (def: def) =
   match def.u with
   | Val _ -> tostring_var n def
   | Var _ -> tostring_var n def
-  | Fun (params, block) ->
-    let typ = tostring_typ def.typ in
+  | Fun (params, typ, block) ->
+    let typ = tostring_typ typ in
     let block = tostring_block (n + 1) block in
     (* TODO: assert param exps are Dynamic *)
     begin match params with
@@ -515,12 +680,13 @@ and tostring_top (def: def) =
     String.concat " " ["DEF RECORD"; def.id; block]
 
 and tostring_var n (def: def) =
-  let typ = tostring_typ def.typ in
-  let (vartype, exp) = match def.u with
-    | Val exp -> ("VAL", tostring_exp n exp)
-    | Var exp -> ("VAR", tostring_exp n exp)
-    | _       -> raise ErrPrinter
+  let (vartype, typ, exp) = match def.u with
+    | Val (typ, exp) -> ("VAL", typ, exp)
+    | Var (typ, exp) -> ("VAR", typ, exp)
+    | _ -> raise ErrPrinter
   in
+  let typ = tostring_typ typ in
+  let exp = tostring_exp n exp in
   let leftside = String.concat " " ["DEF"; vartype; def.id; ":"; typ; "="] in
   let exp = "\n" ^ tabs (n + 1) ^ exp in
   leftside ^ exp
@@ -542,7 +708,7 @@ and tostring_typ = function
   | Float     -> "FLOAT"
   | String    -> "STRING"
   | Array typ -> "[" ^ tostring_typ typ ^ "]"
-  | Record id -> "RECORD " ^ id
+  | Record def -> "RECORD " ^ def.id
 
 and tostring_stmt n (stmt: stmt) = match stmt.u with
   | Asg (lhs, exp) ->
@@ -569,7 +735,7 @@ and tostring_exp n (exp: exp) =
     let exps = String.concat ", " exps in
     typ ^ " [" ^ exps ^ "]"
 
-  | LiteralRecord (def, fields) ->
+  | LiteralRecord fields ->
     let f n (lhs, exp) = match lhs.u with
       | Id def -> (tabs n) ^ def.id ^ " = " ^ (tostring_exp n exp) ^ "\n"
       | _ -> raise ErrPrinter
@@ -578,7 +744,10 @@ and tostring_exp n (exp: exp) =
     let fields = List.map (f @@ n + 1) fields in
     let fields = String.concat "" fields in
     let fields = if fields = "" then "" else "\n" ^ fields ^ (tabs n) in
-    def.id ^ " {" ^ fields ^ "}"
+    begin match exp.typ with
+    | Record def -> def.id ^ " {" ^ fields ^ "}"
+    | _ -> raise ErrPrinter
+    end
 
   | Lhs lhs -> tostring_lhs n lhs
 

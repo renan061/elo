@@ -7,7 +7,7 @@ exception ErrNotImplemented
 exception ErrCompiler of string
 
 exception ErrExpectedArray of Ast1.lhs
-exception ErrExpectedRecord of Lexing.position * id * typ
+exception ErrExpectedRecord of Lexing.position * defU
 exception ErrFieldNotFound of Lexing.position * id * def
 exception ErrGlobalVar of Lexing.position * id
 exception ErrLiteralArraySameType of Lexing.position
@@ -84,7 +84,7 @@ let find_record st p id = match st#lookup id with
   | Some (def: def) ->
     begin match def.u with
     | Rec fields -> (def, fields)
-    | _ -> raise @@ ErrExpectedRecord (p, id, def.typ)
+    | _ -> raise @@ ErrExpectedRecord (p, def.u)
     end
 
 let lookup_record (fields: def list) id (p, rec_) =
@@ -100,7 +100,7 @@ let rec typ_tostring = function
   | Float -> "Float"
   | String -> "String"
   | Array typ -> "[" ^ typ_tostring typ  ^ "]"
-  | Record id -> id
+  | Record def -> def.id
 
 (* -------------------------------------------------------------------------- *)
 
@@ -126,8 +126,8 @@ and sem_top st def = match def with
       | None -> Void
       | Some typ -> sem_typ st typ
     in
-    let dummyU = Fun ([], []) in
-    let fun_ = {p = p; id = id; typ = typ; u = dummyU; llv = llv} in
+    let dummyU = Fun ([], Void, []) in
+    let fun_ = {p = p; id = id; u = dummyU; llv = llv} in
     let _ = st#insert fun_ in
     st#down;
     let f = function
@@ -135,15 +135,15 @@ and sem_top st def = match def with
       | _ -> raise (ErrCompiler "top.Fun")
     in
     let params = List.map f params in
-    fun_.u <- Fun (params, []);
+    fun_.u <- Fun (params, typ, []);
     let block = sem_block st block in
-    fun_.u <- Fun (params, block);
+    fun_.u <- Fun (params, typ, block);
     st#up;
     fun_
 
   | Ast1.Rec (p, (_, id), defs) ->
     let dummyU = Rec [] in
-    let rec_ = {p = p; id = id; typ = Record id; u = dummyU; llv = llv} in
+    let rec_ = {p = p; id = id; u = dummyU; llv = llv} in
     let f (def: Ast1.def) = match def with
       | Val _ -> sem_var st def
       | Var _ -> sem_var st def
@@ -167,7 +167,7 @@ and sem_var st def = match def with
         typecheck p typ exp.typ;
         typ
     in
-    st#insert {p = p; id = snd id; typ = typ; u = Val exp; llv = llv}
+    st#insert {p = p; id = snd id; u = Val (typ, exp); llv = llv}
 
   | Ast1.Var (p, id, typ, exp) ->
     let exp = match typ, exp with
@@ -180,7 +180,7 @@ and sem_var st def = match def with
         typecheck p typ exp.typ;
         exp
     in
-    st#insert {p = p; id = snd id; typ = exp.typ; u = Var exp; llv = llv}
+    st#insert {p = p; id = snd id; u = Var (exp.typ, exp); llv = llv}
 
   | _ -> raise (ErrCompiler "var._")
 
@@ -204,7 +204,7 @@ and sem_typ st typ = match typ with
   | Ast1.Id (_, "Int")    -> Int
   | Ast1.Id (_, "Float")  -> Float
   | Ast1.Id (_, "String") -> String
-  | Ast1.Id _             -> raise (ErrUnknownType typ)
+  | Ast1.Id (p, id)       -> let (def, _) = find_record st p id in Record def
   | Ast1.Array typ        -> Array (sem_typ st typ)
 
 (* -------------------------------------------------------------------------- *)
@@ -264,14 +264,18 @@ and sem_exp st exp = match exp with
     let f ((p, id), exp) =
       let exp = sem_exp st exp in
       let (field: def) = lookup_record rec_fields id (p, rec_def) in
-      let lhs = {p = p; typ = field.typ; u = Id field} in
+      let field_typ = match field.u with
+        | Val (typ, _) | Var (typ, _) -> typ
+        | _ -> raise (ErrCompiler "sem_exp.LiteralRecord")
+      in
+      let lhs = {p = p; typ = field_typ; u = Id field} in
       let ok, err = can_be_reassigned lhs in
       if not ok then raise err;
       typecheck p lhs.typ exp.typ;
       (lhs, exp)
     in
     let fields = List.map f fields in
-    {p = p; typ = rec_def.typ; u = LiteralRecord (rec_def, fields)}
+    {p = p; typ = Record rec_def; u = LiteralRecord fields}
 
   | Ast1.Lhs lhs ->
     let {p; typ; _} as lhs = sem_lhs st lhs in
@@ -283,11 +287,12 @@ and sem_exp st exp = match exp with
 
 and sem_lhs st lhs = match lhs with
   | Id (p, id2 as id1) -> (* id *)
-    let def = match st#lookup id2 with
-      | None -> raise (ErrUndefinedVariable id1)
-      | Some def -> def
+    let (typ, u) = match st#lookup id2 with
+      | Some ({u = Val (typ, _); _} as def) -> (typ, Id def)
+      | Some ({u = Var (typ, _); _} as def) -> (typ, Id def)
+      | _ -> raise (ErrUndefinedVariable id1)
     in
-    {p = p; typ = def.typ; u = Id def}
+    {p; typ; u}
 
   | Index (p, arr, idx) -> (* arr[idx] *)
     let arr = sem_exp st arr in
@@ -300,13 +305,17 @@ and sem_lhs st lhs = match lhs with
 
   | Field (p, exp, (_, field)) -> (* exp.field *)
     let exp = sem_exp st exp in
-    let rec_id = match exp.typ with
-      | Record id -> id
-      | _ -> raise @@ ErrExpectedRecord (p, field, exp.typ)
+    let (rec_def, rec_fields) = match exp.typ with
+      | Record ({u = Rec fields; _} as def) -> (def, fields)
+      | Record def -> raise @@ ErrExpectedRecord (p, def.u)
+      | _ -> raise (ErrCompiler "sem_lhs.Field")
     in
-    let (rec_def, rec_fields) = find_record st p rec_id in
     let field_def = lookup_record rec_fields field (p, rec_def) in
-    {p = p; typ = field_def.typ; u = Field (exp, field_def)}
+    let typ = match field_def.u with
+      | Val (typ, _) | Var (typ, _) -> typ
+      | _ -> raise (ErrCompiler "sem_lhs.Field")
+    in
+    {p = p; typ = typ; u = Field (exp, field_def)}
 
 (* -------------------------------------------------------------------------- *)
 
@@ -315,8 +324,7 @@ and handle_error e =
   let (ln, s) = match e with
     | Symtable.ErrDuplicate (def, {p; id; u; _}) ->
       let kind = match u with
-        | Val _ -> "variable"
-        | Var _ -> "variable"
+        | Val _ | Var _ -> "variable"
         | Fun _ -> "function"
         | Rec _ -> "record"
       in
@@ -324,7 +332,7 @@ and handle_error e =
       let msg = sprintf "redeclaration of %s '%s' from line %d" in
       ln, msg kind id p.pos_lnum
     | ErrExpectedArray lhs -> -33, "a"
-    | ErrExpectedRecord (p, id, typ) -> p.pos_lnum, "a"
+    | ErrExpectedRecord (p, typ) -> p.pos_lnum, "a"
     | ErrGlobalVar ({pos_lnum; _}, id) ->
       let msg = sprintf "global variable '%s' must be defined as 'val'" in
       pos_lnum, msg id
