@@ -52,10 +52,13 @@ module Symtable = struct
 
     (* returns <def> or raises an exception *)
     method insert (def: Ast2.def) =
-      match self#lookup def.id with
-      | None                -> let scope = List.hd scopes in scope#insert def
-      | Some originaldef    -> raise @@ ErrDuplicate (def, originaldef)
-      | exception Failure _ -> raise (ErrCompiler "symtable.insert")
+      match scopes with
+      | [] -> raise (ErrCompiler "symtable.insert.noscope")
+      | scope :: _ ->
+        begin match scope#lookup def.id with
+        | None             -> scope#insert def
+        | Some originaldef -> raise @@ ErrDuplicate (def, originaldef)
+        end
   end
 end
 
@@ -191,10 +194,7 @@ and sem_block st block =
     | Ast1.V v -> V (sem_var st v)
     | Ast1.S s -> S (sem_stmt st s)
   in
-  st#down;
-  let block = List.map f block in
-  st#up;
-  block
+  List.map f block
 
 (* -------------------------------------------------------------------------- *)
 
@@ -219,7 +219,8 @@ and sem_stmt st stmt = match stmt with
     (* TODO: match op *)
     {p = lhs.p; u = Asg (lhs, exp)}
 
-  | Call call -> raise ErrNotImplemented
+  | Call call -> sem_call st call
+
   | Return exp ->
     begin match exp with
     | None -> raise ErrNotImplemented
@@ -229,6 +230,15 @@ and sem_stmt st stmt = match stmt with
   | While (exp, block) -> raise ErrNotImplemented
   | For (id, range, block) -> raise ErrNotImplemented
   | Block block -> raise ErrNotImplemented
+
+(* -------------------------------------------------------------------------- *)
+
+and sem_call st call = match call with
+  | Function (id, args) -> raise ErrNotImplemented
+
+  | Method (obj, id, args) -> raise ErrNotImplemented
+
+  | Constructor (typ, args) -> raise ErrNotImplemented
 
 (* -------------------------------------------------------------------------- *)
 

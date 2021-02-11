@@ -5,7 +5,15 @@
   GLOBAL VARIABLES
   FUNCTION DEFINITIONS
   RECORD DEFINITIONS
+  TODO: BLOCKS & SCOPING
+  LOCAL VARIABLES
   STATEMENTS
+    ASSIGNMENT
+      TODO: COMPOUND ASSIGNMENTS
+    TODO: CALLS
+  CALLS
+  TODO: EXPRESSIONS
+  TODO: LHS
 *)
 
 (*
@@ -318,6 +326,16 @@ let tests = [(
     DEF VAL d2 : STRING =
       STRING("6")
   (*-------------------------------------------------------------------*) |}); (
+  "global variables - uninitialized (with type)", {|
+    val a: Int;
+  |}, {|
+    Elo.Parser.MenhirBasics.Error
+  (*-------------------------------------------------------------------*) |}); (
+  "global variables - uninitialized (without type)", {|
+    val a;
+  |}, {|
+    Elo.Parser.MenhirBasics.Error
+  (*-------------------------------------------------------------------*) |}); (
   "global variables - must be val", {|
     var a = 1;
   |}, {|
@@ -345,9 +363,9 @@ let tests = [(
   |}, {|
     error in line 2: mismatching types: expected [Bool], got Bool
 (* ------------------------------------------------------------------- *) |}); (
-(* FUNCTION DEFINITION ----------------------------------------------- *)
+(* FUNCTION DEFINITIONS ---------------------------------------------- *)
 (* ------------------------------------------------------------------- *)
-  "function definition - ok", {|
+  "function definitions - ok", {|
     function f(x: Int, y: Bool, z: [Int]) {
       val a = "A";
       val b = "B";
@@ -369,19 +387,51 @@ let tests = [(
         STRING("B")
     }
   (*-------------------------------------------------------------------*) |}); (
-  "function definition - recursion visibility", {|
+  "function definitions - parameter visibility", {|
+    function f(a: Int) {
+      val b = a;
+    }
+  |}, {|
+    DEF FUNCTION f : VOID
+      PARAMETERS (
+        DEF VAL a : INT =
+          DYNAMIC INT
+      )
+    {
+      DEF VAL b : INT =
+        ID a: INT
+    }
+  (*-------------------------------------------------------------------*) |}); (
+  "function definitions - function id scope", {|
+    function f {
+      val f = 1;
+    }
+  |}, {|
+    DEF FUNCTION f () : VOID {
+      DEF VAL f : INT =
+        INT(1)
+    }
+  (*-------------------------------------------------------------------*) |}); (
+  "function definitions - parameter scope", {|
+    function f(a: Int) {
+      val a = 1;
+    }
+  |}, {|
+    error in line 3: redeclaration of variable 'a' from line 2
+  (*-------------------------------------------------------------------*) |}); (
+  "function definitions - recursion visibility", {|
     function f {
       f();
     }
   |}, {|
     DEF FUNCTION f () : VOID {}
   (*-------------------------------------------------------------------*) |}); (
-  "function definition - without parameters / without return type", {|
+  "function definitions - without parameters / without return type", {|
     function f {}
   |}, {|
     DEF FUNCTION f () : VOID {}
   (*-------------------------------------------------------------------*) |}); (
-  "function definition - with one parameter / without return type", {|
+  "function definitions - with one parameter / without return type", {|
     function f(a: Bool) {}
   |}, {|
     DEF FUNCTION f : VOID
@@ -391,7 +441,7 @@ let tests = [(
       )
     {}
   (*-------------------------------------------------------------------*) |}); (
-  "function definition - with multiple parameters / without return type", {|
+  "function definitions - with multiple parameters / without return type", {|
     function f1(a: Int, b: Float) {}
     function f2(a: Bool, b: Float, c: Int) {}
   |}, {|
@@ -414,12 +464,12 @@ let tests = [(
       )
     {}
   (*-------------------------------------------------------------------*) |}); (
-  "function definition - without parameters / with return type", {|
+  "function definitions - without parameters / with return type", {|
     function f: Bool {}
   |}, {|
     DEF FUNCTION f () : BOOL {}
   (*-------------------------------------------------------------------*) |}); (
-  "function definition - with one parameter / with return type", {|
+  "function definitions - with one parameter / with return type", {|
     function f(a: Bool): Float {}
   |}, {|
     DEF FUNCTION f : FLOAT
@@ -429,7 +479,7 @@ let tests = [(
       )
     {}
   (*-------------------------------------------------------------------*) |}); (
-  "function definition - with multiple parameters / with return type", {|
+  "function definitions - with multiple parameters / with return type", {|
     function f1(a: Bool, b: Int): Float {}
     function f2(a: Bool, b: Int, c: Float, d: Float): String {}
   |}, {|
@@ -454,24 +504,24 @@ let tests = [(
       )
     {}
   (*-------------------------------------------------------------------*) |}); (
-  "function definition - invalid () for parameters", {|
+  "function definitions - invalid () for parameters", {|
     function f() {}
   |}, {|
     Elo.Parser.MenhirBasics.Error
   (*-------------------------------------------------------------------*) |}); (
-  "function definition - redeclaration (function x function)", {|
+  "function definitions - redeclaration (function x function)", {|
     function f : String {}
     function f(a: Int) {}
   |}, {|
     error in line 3: redeclaration of function 'f' from line 2
   (*-------------------------------------------------------------------*) |}); (
-  "function definition - redeclaration (variable x function)", {|
+  "function definitions - redeclaration (variable x function)", {|
     val f = 5;
     function f(a: Int) {}
   |}, {|
     error in line 3: redeclaration of variable 'f' from line 2
   (*-------------------------------------------------------------------*) |}); (
-  "function definition - uppercase id", {|
+  "function definitions - uppercase id", {|
     function F(a: Float) {}
   |}, {|
     Elo.Parser.MenhirBasics.Error
@@ -582,6 +632,88 @@ let tests = [(
   |}, {|
     Elo.Parser.MenhirBasics.Error
 (* ------------------------------------------------------------------- *) |}); (
+(* LOCAL VARIABLES --------------------------------------------------- *)
+(* ------------------------------------------------------------------- *)
+  "local variables - ok", {|
+  function f {
+    val a1 = true;
+    var b1 = 1;
+    val c1 = 2.0;
+    var d1 = "3";
+    var a2: Bool = false;
+    val b2: Int = 4;
+    var c2: Float = 5.0;
+    val d2: String = "6";
+  }
+  |}, {|
+    DEF FUNCTION f () : VOID {
+      DEF VAL a1 : BOOL =
+        BOOL(true)
+      DEF VAR b1 : INT =
+        INT(1)
+      DEF VAL c1 : FLOAT =
+        FLOAT(2.)
+      DEF VAR d1 : STRING =
+        STRING("3")
+      DEF VAR a2 : BOOL =
+        BOOL(false)
+      DEF VAL b2 : INT =
+        INT(4)
+      DEF VAR c2 : FLOAT =
+        FLOAT(5.)
+      DEF VAL d2 : STRING =
+        STRING("6")
+    }
+  (*-------------------------------------------------------------------*) |}); (
+  "local variables - uninitialized (with type)", {|
+    function f {
+      val a: Int;
+    }
+  |}, {|
+    Elo.Parser.MenhirBasics.Error
+  (*-------------------------------------------------------------------*) |}); (
+  "local variables - uninitialized (without type)", {|
+    function f {
+      val a;
+    }
+  |}, {|
+    Elo.Parser.MenhirBasics.Error
+  (*-------------------------------------------------------------------*) |}); (
+  "local variables - redeclaration (variable x variable)", {|
+    function f {
+      val x = true;
+      var x = false;
+    }
+  |}, {|
+    error in line 4: redeclaration of variable 'x' from line 3
+  (*-------------------------------------------------------------------*) |}); (
+  "local variables - scoping and shadowing", {|
+    val x = 1;
+    function f {
+      val x = true;
+    }
+  |}, {|
+    DEF VAL x : INT =
+      INT(1)
+    DEF FUNCTION f () : VOID {
+      DEF VAL x : BOOL =
+        BOOL(true)
+    }
+  (*-------------------------------------------------------------------*) |}); (
+  "local variables - uppercase id", {|
+    function f {
+      val A = true;
+    }
+  |}, {|
+    Elo.Parser.MenhirBasics.Error
+  (*-------------------------------------------------------------------*) |}); (
+  "local variables - mismatching types", {|
+    function f {
+      var a: [Bool] = true;
+    }
+  |}, {|
+    error in line 3: mismatching types: expected [Bool], got Bool
+(* ------------------------------------------------------------------- *) |}); (
 (* STATEMENTS -------------------------------------------------------- *)
 (* ------------------------------------------------------------------- *)
   "statements - assignment - ok", {|
@@ -625,6 +757,15 @@ let tests = [(
     }
   |}, {|
     error in line 4: mismatching types: expected Int, got Bool
+(* ------------------------------------------------------------------- *) |}); (
+(* CALLS ------------------------------------------------------------- *)
+(* ------------------------------------------------------------------- *)
+  "calls - ok", {|
+    function f {
+      f();
+    }
+  |}, {|
+    OK
 |})]
 
 (* -------------------------------------------------------------------------- *)
@@ -812,5 +953,5 @@ let () =
   match List.filter_map f tests with
   | [] -> print_string ("SEM TESTS OK!\n" ^ div)
   | errs ->
-    printf "SEM TESTS - %d ERRORS\n%s" (List.length errs) div;
+    printf "SEM TESTS - %d ERROR(S)\n%s" (List.length errs) div;
     List.iter showerr errs
