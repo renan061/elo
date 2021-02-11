@@ -52,11 +52,6 @@ and exp =
   | Lhs     of lhs
   | Call    of call
 
-and call =
-  | Function    of id * exp list
-  | Method      of exp * id * exp list
-  | Constructor of typ * exp list
-
 and literal =
   | Nil     of p
   | True    of p
@@ -72,7 +67,10 @@ and lhs =
   | Index of p * exp * exp
   | Field of p * exp * id
 
-(* todo: call *)
+and call =
+  | Function    of id * exp list
+  | Method      of exp * id * exp list
+  | Constructor of typ * exp list
 
 (* auxiliary *)
 

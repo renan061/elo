@@ -6,7 +6,10 @@ exception ErrNotImplemented
 
 exception ErrCompiler of string
 
+exception ErrCallFewArgs
+exception ErrCallTooManyArgs
 exception ErrExpectedArray of Ast1.lhs
+exception ErrExpectedFunction of Lexing.position * defU
 exception ErrExpectedRecord of Lexing.position * defU
 exception ErrFieldNotFound of Lexing.position * id * def
 exception ErrGlobalVar of Lexing.position * id
@@ -14,6 +17,7 @@ exception ErrLiteralArraySameType of Lexing.position
 exception ErrReassignedVal of Lexing.position * id
 exception ErrRecordOnlyVariables of Ast1.def
 exception ErrType of Lexing.position * typ * typ
+exception ErrUndefinedFunction of Ast1.id
 exception ErrUndefinedRecord of Lexing.position * id
 exception ErrUndefinedVariable of Ast1.id
 exception ErrUnknownType of Ast1.typ
@@ -64,7 +68,7 @@ end
 
 (* -------------------------------------------------------------------------- *)
 
-let can_be_reassigned {p; u; _} =
+let can_be_reassigned ({p; u; _}: lhs) =
   let ok = (true, ErrCompiler "can_be_reassigned") in
   match u with
   | Id {id; u; _} ->
@@ -129,7 +133,7 @@ and sem_top st def = match def with
       | None -> Void
       | Some typ -> sem_typ st typ
     in
-    let dummyU = Fun ([], Void, []) in
+    let (dummyU: defU) = Fun ([], typ, []) in
     let fun_ = {p = p; id = id; u = dummyU; llv = llv} in
     let _ = st#insert fun_ in
     st#down;
@@ -219,26 +223,16 @@ and sem_stmt st stmt = match stmt with
     (* TODO: match op *)
     {p = lhs.p; u = Asg (lhs, exp)}
 
-  | Call call -> sem_call st call
+  | Call call ->
+    let call = sem_call st call in
+    {p = call.p; u = Call call}
 
-  | Return exp ->
-    begin match exp with
-    | None -> raise ErrNotImplemented
-    | Some exp -> raise ErrNotImplemented
-    end
+  | Return None -> raise ErrNotImplemented
+  | Return (Some exp) -> raise ErrNotImplemented
   | If (exp, block, elseif, else_) -> raise ErrNotImplemented
   | While (exp, block) -> raise ErrNotImplemented
   | For (id, range, block) -> raise ErrNotImplemented
   | Block block -> raise ErrNotImplemented
-
-(* -------------------------------------------------------------------------- *)
-
-and sem_call st call = match call with
-  | Function (id, args) -> raise ErrNotImplemented
-
-  | Method (obj, id, args) -> raise ErrNotImplemented
-
-  | Constructor (typ, args) -> raise ErrNotImplemented
 
 (* -------------------------------------------------------------------------- *)
 
@@ -278,7 +272,7 @@ and sem_exp st exp = match exp with
         | Val (typ, _) | Var (typ, _) -> typ
         | _ -> raise (ErrCompiler "sem_exp.LiteralRecord")
       in
-      let lhs = {p = p; typ = field_typ; u = Id field} in
+      let (lhs: lhs) = {p = p; typ = field_typ; u = Id field} in
       let ok, err = can_be_reassigned lhs in
       if not ok then raise err;
       typecheck p lhs.typ exp.typ;
@@ -288,10 +282,12 @@ and sem_exp st exp = match exp with
     {p = p; typ = Record rec_def; u = LiteralRecord fields}
 
   | Ast1.Lhs lhs ->
-    let {p; typ; _} as lhs = sem_lhs st lhs in
+    let ({p; typ; _} as lhs: lhs) = sem_lhs st lhs in
     {p = p; typ = typ; u = Lhs lhs}
 
-  | Call call -> raise ErrNotImplemented
+  | Call call ->
+    let call = sem_call st call in
+    {p = call.p; typ = call.typ; u = Call call}
 
 (* -------------------------------------------------------------------------- *)
 
@@ -326,6 +322,39 @@ and sem_lhs st lhs = match lhs with
       | _ -> raise (ErrCompiler "sem_lhs.Field")
     in
     {p = p; typ = typ; u = Field (exp, field_def)}
+
+(* -------------------------------------------------------------------------- *)
+
+and sem_call st call = match call with
+  | Function ((p, id2) as id1, args) ->
+    let (fun_def, params, ret_typ) = match st#lookup id2 with
+      | None -> raise (ErrUndefinedFunction id1)
+      | Some def ->
+        begin match def.u with
+        | Fun (params, ret_typ, _) -> (def, params, ret_typ)
+        | _ -> raise @@ ErrExpectedFunction (p, def.u)
+        end
+    in
+    let args = List.map (sem_exp st) args in
+    let rec args_vs_params = function
+      | [], [] -> ()
+      | _, [] -> raise ErrCallTooManyArgs
+      | [], _ -> raise ErrCallFewArgs
+      | (arg: exp) :: args, (param: def) :: params ->
+        let param_typ = match param.u with
+          | Val (typ, _) -> typ
+          | _ -> raise (ErrCompiler "sem_call.function")
+        in
+        typecheck arg.p arg.typ param_typ;
+        args_vs_params (args, params)
+    in
+    args_vs_params (args, params);
+    let (u: call_u) = Fun (fun_def, args) in
+    {p = p; typ = ret_typ; u = u}
+
+  | Method (obj, id, args) -> raise ErrNotImplemented
+
+  | Constructor (typ, args) -> raise ErrNotImplemented
 
 (* -------------------------------------------------------------------------- *)
 

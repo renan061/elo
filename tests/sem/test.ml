@@ -422,9 +422,14 @@ let tests = [(
   "function definitions - recursion visibility", {|
     function f {
       f();
+      val f = f();
     }
   |}, {|
-    DEF FUNCTION f () : VOID {}
+    DEF FUNCTION f () : VOID {
+      CALL f ()
+      DEF VAL f : VOID =
+        CALL f () : VOID
+    }
   (*-------------------------------------------------------------------*) |}); (
   "function definitions - without parameters / without return type", {|
     function f {}
@@ -761,11 +766,60 @@ let tests = [(
 (* CALLS ------------------------------------------------------------- *)
 (* ------------------------------------------------------------------- *)
   "calls - ok", {|
-    function f {
-      f();
+    function f0 {}
+    function f1(a: String) {}
+    function f2(a: Int, b: Float) {}
+    function fN(a: Bool, b: [Float], third: Int, xpto: Int) {}
+    function main {
+      f0();
+      f1("string");
+      f2(2, 3.14);
+      fN(true, [3.0, 0.1, 0.04], 555, 777);
     }
   |}, {|
-    OK
+    DEF FUNCTION f0 () : VOID {}
+    DEF FUNCTION f1 : VOID
+      PARAMETERS (
+        DEF VAL a : STRING =
+          DYNAMIC STRING
+      )
+    {}
+    DEF FUNCTION f2 : VOID
+      PARAMETERS (
+        DEF VAL a : INT =
+          DYNAMIC INT,
+        DEF VAL b : FLOAT =
+          DYNAMIC FLOAT
+      )
+    {}
+    DEF FUNCTION fN : VOID
+      PARAMETERS (
+        DEF VAL a : BOOL =
+          DYNAMIC BOOL,
+        DEF VAL b : [FLOAT] =
+          DYNAMIC [FLOAT],
+        DEF VAL third : INT =
+          DYNAMIC INT,
+        DEF VAL xpto : INT =
+          DYNAMIC INT
+      )
+    {}
+    DEF FUNCTION main () : VOID {
+      CALL f0 ()
+      CALL f1 (
+        STRING("string")
+      )
+      CALL f2 (
+        INT(2),
+        FLOAT(3.14)
+      )
+      CALL fN (
+        BOOL(true),
+        [FLOAT] [FLOAT(3.), FLOAT(0.1), FLOAT(0.04)],
+        INT(555),
+        INT(777)
+      )
+    }
 |})]
 
 (* -------------------------------------------------------------------------- *)
@@ -858,6 +912,7 @@ and tostring_stmt n (stmt: stmt) = match stmt.u with
     let exp = tostring_exp n exp in
     let exp = "\n" ^ (tabs n) ^ exp in
     String.concat " " ["ASG"; lhs; "="] ^ exp
+  | Call call -> tostring_call n call
 
 and tostring_exp n (exp: exp) =
   let typ = tostring_typ exp.typ in
@@ -877,7 +932,7 @@ and tostring_exp n (exp: exp) =
     typ ^ " [" ^ exps ^ "]"
 
   | LiteralRecord fields ->
-    let f n (lhs, exp) = match lhs.u with
+    let f n ((lhs: lhs), exp) = match lhs.u with
       | Id def -> (tabs n) ^ def.id ^ " = " ^ (tostring_exp n exp) ^ "\n"
       | _ -> raise ErrPrinter
     in
@@ -891,6 +946,7 @@ and tostring_exp n (exp: exp) =
     end
 
   | Lhs lhs -> tostring_lhs n lhs
+  | Call call -> tostring_call n call ^ " : " ^ (tostring_typ call.typ)
 
 and tostring_lhs n lhs =
   let typ = tostring_typ lhs.typ in
@@ -906,6 +962,15 @@ and tostring_lhs n lhs =
       tabs n ^ "INDEX => " ^ idx
   | Field (exp, def) ->
     "FIELD " ^ def.id ^ " OF " ^ (tostring_exp n exp)
+
+and tostring_call n call = match call.u with
+  | Fun (fun_def, args) ->
+    let args = List.map (tostring_exp n) args in
+    let args = String.concat (",\n" ^ tabs (n + 1)) args in
+    let args = if args = ""
+      then args
+      else "\n" ^ (tabs (n + 1)) ^ args ^ "\n" ^ (tabs n) in
+    "CALL " ^ fun_def.id ^ " (" ^ args ^ ")"
 
 let () =
   let f (name, input, expected) =

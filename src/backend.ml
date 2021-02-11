@@ -121,3 +121,4 @@ and backend_exp irs {p; typ; u} = match u with
     | Index _ -> raise NotImplemented
     | Field _ -> raise NotImplemented
     end
+  | Call _ -> raise NotImplemented

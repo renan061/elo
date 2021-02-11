@@ -34,6 +34,12 @@ and lhs = {
   u: lhsU;
 }
 
+and call = {
+  p: Lexing.position;
+  typ: typ;
+  u: call_u;
+}
+
 (* union types *)
 
 and defU =
@@ -44,6 +50,7 @@ and defU =
 
 and stmtU =
   | Asg of lhs * exp
+  | Call of call
 
 and expU =
   | Dynamic
@@ -57,11 +64,17 @@ and expU =
   | LiteralArray of exp list
   | LiteralRecord of (lhs * exp) list
   | Lhs of lhs
+  | Call of call
 
 and lhsU =
   | Id of def
   | Index of exp * exp
   | Field of exp * def
+
+and call_u =
+  | Fun of def * exp list
+  (* Method *)
+  (* Constructor *)
 
 and typ =
   | Void
