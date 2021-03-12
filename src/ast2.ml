@@ -51,6 +51,7 @@ and defU =
 and stmtU =
   | Asg of lhs * exp
   | Call of call
+  | Ret of exp option
 
 and expU =
   | Dynamic

@@ -227,8 +227,12 @@ and sem_stmt st stmt = match stmt with
     let call = sem_call st call in
     {p = call.p; u = Call call}
 
-  | Return None -> raise ErrNotImplemented
-  | Return (Some exp) -> raise ErrNotImplemented
+  | Return (p, None) ->
+    {p = p; u = Ret None}
+  | Return (p, (Some exp)) ->
+    let exp = sem_exp st exp in
+    {p = p; u = Ret (Some exp)}
+
   | If (exp, block, elseif, else_) -> raise ErrNotImplemented
   | While (exp, block) -> raise ErrNotImplemented
   | For (id, range, block) -> raise ErrNotImplemented

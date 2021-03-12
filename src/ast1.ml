@@ -37,7 +37,7 @@ and stmt =
   (* Simple *)
   | Asg    of p * lhs * asgop * exp
   | Call   of call
-  | Return of exp option
+  | Return of p * exp option
   (* Compound *)
   | If     of exp * block * (exp * block) list * block option
   | While  of exp * block

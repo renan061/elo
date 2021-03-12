@@ -75,9 +75,9 @@ record_def : "record" UID "{" variable_def* "}" { Rec ($1, $2, $4) }
 stmt : simple_stmt ";" { $1 }
      | compound_stmt   { $1 }
 
-simple_stmt : assignment    { $1        }
-            | call          { Call   $1 }
-            | "return" exp? { Return $2 }
+simple_stmt : assignment    { $1              }
+            | call          { Call   $1       }
+            | "return" exp? { Return ($1, $2) }
 
 compound_stmt : "if" exp block elseif* else_? { If    ($2, $3, $4, $5) }
               | "while" exp block             { While ($2, $3)         }

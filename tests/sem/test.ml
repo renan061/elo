@@ -10,7 +10,11 @@
   STATEMENTS
     ASSIGNMENT
       TODO: COMPOUND ASSIGNMENTS
-    TODO: CALLS
+    TODO: RETURN
+    TODO: IF
+    TODO: WHILE
+    TODO: FOR
+    TODO: BLOCK
   CALLS
   TODO: EXPRESSIONS
   TODO: LHS
@@ -762,6 +766,45 @@ let tests = [(
     }
   |}, {|
     error in line 4: mismatching types: expected Int, got Bool
+  (*-------------------------------------------------------------------*) |}); (
+  "statements - return - no value", {|
+    function f {
+      return;
+    }
+  |}, {|
+    DEF FUNCTION f () : VOID {
+      RETURN
+    }
+  (*-------------------------------------------------------------------*) |}); (
+  "statements - return - with value", {|
+    function f: Int {
+      return 1;
+    }
+  |}, {|
+    DEF FUNCTION f () : INT {
+      RETURN INT(1)
+    }
+  (*-------------------------------------------------------------------*) |}); (
+  "statements - return - empty when expecting value", {|
+    function f: Int {
+      return;
+    }
+  |}, {|
+    TODO
+  (*-------------------------------------------------------------------*) |}); (
+  "statements - return - with value when expecting Void", {|
+    function f {
+      return 1;
+    }
+  |}, {|
+    TODO
+  (*-------------------------------------------------------------------*) |}); (
+  "statements - return - value with the wrong type", {|
+    function f: Int {
+      return true;
+    }
+  |}, {|
+    TODO
 (* ------------------------------------------------------------------- *) |}); (
 (* CALLS ------------------------------------------------------------- *)
 (* ------------------------------------------------------------------- *)
@@ -976,6 +1019,10 @@ and tostring_stmt n (stmt: stmt) = match stmt.u with
     let exp = "\n" ^ (tabs n) ^ exp in
     String.concat " " ["ASG"; lhs; "="] ^ exp
   | Call call -> tostring_call n call
+  | Ret None -> "RETURN"
+  | Ret (Some exp) ->
+    let exp = tostring_exp n exp in
+    "RETURN " ^ exp
 
 and tostring_exp n (exp: exp) =
   let typ = tostring_typ exp.typ in
