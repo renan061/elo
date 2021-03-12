@@ -6,8 +6,8 @@ exception ErrNotImplemented
 
 exception ErrCompiler of string
 
-exception ErrCallFewArgs
-exception ErrCallTooManyArgs
+exception ErrCallNotEnoughArgs of Ast1.id
+exception ErrCallTooManyArgs of Ast1.id
 exception ErrExpectedArray of Ast1.lhs
 exception ErrExpectedFunction of Lexing.position * defU
 exception ErrExpectedRecord of Lexing.position * defU
@@ -338,14 +338,14 @@ and sem_call st call = match call with
     let args = List.map (sem_exp st) args in
     let rec args_vs_params = function
       | [], [] -> ()
-      | _, [] -> raise ErrCallTooManyArgs
-      | [], _ -> raise ErrCallFewArgs
+      | _, [] -> raise @@ ErrCallTooManyArgs id1
+      | [], _ -> raise @@ ErrCallNotEnoughArgs id1
       | (arg: exp) :: args, (param: def) :: params ->
         let param_typ = match param.u with
           | Val (typ, _) -> typ
           | _ -> raise (ErrCompiler "sem_call.function")
         in
-        typecheck arg.p arg.typ param_typ;
+        typecheck arg.p param_typ arg.typ;
         args_vs_params (args, params)
     in
     args_vs_params (args, params);
@@ -370,7 +370,17 @@ and handle_error e =
       let ln = def.p.pos_lnum in
       let msg = sprintf "redeclaration of %s '%s' from line %d" in
       ln, msg kind id p.pos_lnum
+
+    | ErrCallNotEnoughArgs ({pos_lnum; _}, id) ->
+      let msg = sprintf "too few arguments in call to '%s'" id in
+      pos_lnum, msg
+    | ErrCallTooManyArgs ({pos_lnum; _}, id) ->
+      let msg = sprintf "too many arguments in call to '%s'" id in
+      pos_lnum, msg
     | ErrExpectedArray lhs -> -33, "a"
+    | ErrExpectedFunction ({pos_lnum; _}, def_u) ->
+      (* TODO use def_u *)
+      pos_lnum, "expected a function"
     | ErrExpectedRecord (p, typ) -> p.pos_lnum, "a"
     | ErrGlobalVar ({pos_lnum; _}, id) ->
       let msg = sprintf "global variable '%s' must be defined as 'val'" in
@@ -388,10 +398,13 @@ and handle_error e =
       let t2 = typ_tostring t2 in
       let msg = sprintf "mismatching types: expected %s, got %s" t1 t2 in
       p.pos_lnum, msg
+    | ErrUndefinedFunction (p, id) ->
+      let msg = sprintf "undefined function '%s'" id in
+      p.pos_lnum, msg
     | ErrUndefinedVariable id ->
       let (p, s) = id in
       let msg = sprintf "undefined variable '%s'" s in
       p.pos_lnum, msg
-    | e                             -> -6, Printexc.to_string e
+    | e -> -6, Printexc.to_string e
   in
   f ln s

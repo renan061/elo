@@ -820,6 +820,69 @@ let tests = [(
         INT(777)
       )
     }
+  (*-------------------------------------------------------------------*) |}); (
+  "call - undefined function", {|
+    function main {
+      f();
+    }
+  |}, {|
+    error in line 3: undefined function 'f'
+  (*-------------------------------------------------------------------*) |}); (
+  "call - expected a function", {|
+    function main {
+      val f = 1;
+      f();
+    }
+  |}, {|
+    error in line 4: expected a function
+  (*-------------------------------------------------------------------*) |}); (
+  "call - more arguments than parameters (1)", {|
+    function f { /* empty*/ }
+    function main {
+      f(1);
+    }
+  |}, {|
+    error in line 4: too many arguments in call to 'f'
+  (*-------------------------------------------------------------------*) |}); (
+  "call - more arguments than parameters (2)", {|
+    function f(a: Int, b: Int) { /* empty*/ }
+    function main {
+      f(1, 2, 3);
+    }
+  |}, {|
+    error in line 4: too many arguments in call to 'f'
+  (*-------------------------------------------------------------------*) |}); (
+  "call - more parameters than arguments (1)", {|
+    function f(a: Int, b: Int) { /* empty*/ }
+    function main {
+      f(1);
+    }
+  |}, {|
+    error in line 4: too few arguments in call to 'f'
+  (*-------------------------------------------------------------------*) |}); (
+  "call - more parameters than arguments (2)", {|
+    function f(a: Int) { /* empty*/ }
+    function main {
+      f();
+    }
+  |}, {|
+    error in line 4: too few arguments in call to 'f'
+  (*-------------------------------------------------------------------*) |}); (
+  "call - mismatching argument vs. parameter types (1)", {|
+    function f(a: Int) { /* empty*/ }
+    function main {
+      f(1.0);
+    }
+  |}, {|
+    error in line 4: mismatching types: expected Int, got Float
+  (*-------------------------------------------------------------------*) |}); (
+  "call - mismatching argument vs. parameter types (2)", {|
+  function f(a: Int, b: Float, c: Bool) { /* empty*/ }
+    function main {
+      f(1, true, 2.0);
+    }
+  |}, {|
+    error in line 4: mismatching types: expected Float, got Bool
 |})]
 
 (* -------------------------------------------------------------------------- *)
