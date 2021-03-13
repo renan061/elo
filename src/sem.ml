@@ -28,7 +28,7 @@ let llv = Llvm.undef @@ Llvm.i1_type @@ Llvm.global_context ()
 
 (* -------------------------------------------------------------------------- *)
 
-module Symtable = struct
+module ST = struct
   exception ErrDuplicate of Ast2.def * Ast2.def
 
   class scope = object
@@ -44,11 +44,11 @@ module Symtable = struct
   class table = object (self)
     val mutable scopes = ([] : scope list)
 
-    method down = scopes <- new scope :: scopes
+    method enterblock = scopes <- new scope :: scopes
 
-    method up =
+    method leaveblock =
       try scopes <- List.tl scopes
-      with Failure _ -> raise (ErrCompiler "symtable.up")
+      with Failure _ -> raise (ErrCompiler "st.leaveblock")
 
     (* returns None if could not find a <def> with <id> *)
     (* otherwise returns <def>                          *)
@@ -57,13 +57,25 @@ module Symtable = struct
     (* returns <def> or raises an exception *)
     method insert (def: Ast2.def) =
       match scopes with
-      | [] -> raise (ErrCompiler "symtable.insert.noscope")
+      | [] -> raise (ErrCompiler "st.insert.noscope")
       | scope :: _ ->
         begin match scope#lookup def.id with
         | None             -> scope#insert def
         | Some originaldef -> raise @@ ErrDuplicate (def, originaldef)
         end
   end
+end
+
+(* -------------------------------------------------------------------------- *)
+
+(* semantic state *)
+class ss = object (self)
+  inherit ST.table as super
+
+  (* the return type of a function, if inside one *)
+  val mutable ret : typ option = None
+  method get_ret = ret
+  method set_ret v = ret <- v
 end
 
 (* -------------------------------------------------------------------------- *)
@@ -86,7 +98,7 @@ let rec typecheck p t1 t2 =
   | Record id1, Record id2 when id1 = id2 -> ()
   | _ -> raise err
 
-let find_record st p id = match st#lookup id with
+let find_record ss p id = match ss#lookup id with
   | None -> raise @@ ErrUndefinedRecord (p, id)
   | Some (def: def) ->
     begin match def.u with
@@ -112,111 +124,113 @@ let rec typ_tostring = function
 (* -------------------------------------------------------------------------- *)
 
 let rec analyse ast1 =
-  let st = new Symtable.table in
-  st#down;
+  let ss = new ss in
+  ss#enterblock;
   let ast2 =
-    try Ok (List.map (fun def -> sem_top st def) ast1)
+    try Ok (List.map (fun def -> sem_top ss def) ast1)
     with e -> Error (handle_error e)
   in
-  st#up;
+  ss#leaveblock;
   ast2
 
 (* -------------------------------------------------------------------------- *)
 
-and sem_top st def = match def with
-  | Ast1.Val _ -> sem_var st def
+and sem_top ss def = match def with
+  | Ast1.Val _ -> sem_var ss def
 
   | Ast1.Var (_, id, _, _) -> raise @@ ErrGlobalVar (fst id, snd id)
 
   | Ast1.Fun (p, (_, id), params, typ, block) ->
     let typ = match typ with
       | None -> Void
-      | Some typ -> sem_typ st typ
+      | Some typ -> sem_typ ss typ
     in
     let (dummyU: defU) = Fun ([], typ, []) in
     let fun_ = {p = p; id = id; u = dummyU; llv = llv} in
-    let _ = st#insert fun_ in
-    st#down;
+    let _ = ss#insert fun_ in
+    ss#enterblock;
     let f = function
-      | Ast1.Val (p, id, Some _, Ast1.Dynamic _) as param -> sem_var st param
+      | Ast1.Val (p, id, Some _, Ast1.Dynamic _) as param -> sem_var ss param
       | _ -> raise (ErrCompiler "top.Fun")
     in
     let params = List.map f params in
     fun_.u <- Fun (params, typ, []);
-    let block = sem_block st block in
+    ss#set_ret (Some typ);
+    let block = sem_block ss block in
+    ss#set_ret None;
     fun_.u <- Fun (params, typ, block);
-    st#up;
+    ss#leaveblock;
     fun_
 
   | Ast1.Rec (p, (_, id), defs) ->
     let dummyU = Rec [] in
     let rec_ = {p = p; id = id; u = dummyU; llv = llv} in
     let f (def: Ast1.def) = match def with
-      | Val _ -> sem_var st def
-      | Var _ -> sem_var st def
+      | Val _ -> sem_var ss def
+      | Var _ -> sem_var ss def
       | _     -> raise (ErrRecordOnlyVariables def)
     in
-    let _ = st#insert rec_ in
-    st#down;
+    let _ = ss#insert rec_ in
+    ss#enterblock;
     rec_.u <- Rec (List.map f defs);
-    st#up;
+    ss#leaveblock;
     rec_
 
 (* -------------------------------------------------------------------------- *)
 
-and sem_var st def = match def with
+and sem_var ss def = match def with
   | Ast1.Val (p, id, typ, exp) ->
-    let exp: exp = sem_exp st exp in
+    let exp: exp = sem_exp ss exp in
     let typ = match typ with
       | None -> exp.typ
       | Some typ ->
-        let typ = sem_typ st typ in
+        let typ = sem_typ ss typ in
         typecheck p typ exp.typ;
         typ
     in
-    st#insert {p = p; id = snd id; u = Val (typ, exp); llv = llv}
+    ss#insert {p = p; id = snd id; u = Val (typ, exp); llv = llv}
 
   | Ast1.Var (p, id, typ, exp) ->
     let exp = match typ, exp with
       | None, None -> raise (ErrUntypedVarDec def)
-      | None, Some exp -> sem_exp st exp
-      | Some typ, None -> {p = p; typ = sem_typ st typ; u = ZeroValue}
+      | None, Some exp -> sem_exp ss exp
+      | Some typ, None -> {p = p; typ = sem_typ ss typ; u = ZeroValue}
       | Some typ, Some exp ->
-        let typ = sem_typ st typ in
-        let exp = sem_exp st exp in
+        let typ = sem_typ ss typ in
+        let exp = sem_exp ss exp in
         typecheck p typ exp.typ;
         exp
     in
-    st#insert {p = p; id = snd id; u = Var (exp.typ, exp); llv = llv}
+    ss#insert {p = p; id = snd id; u = Var (exp.typ, exp); llv = llv}
 
   | _ -> raise (ErrCompiler "var._")
 
 (* -------------------------------------------------------------------------- *)
 
-and sem_block st block =
+and sem_block ss block =
   let f = function
-    | Ast1.V v -> V (sem_var st v)
-    | Ast1.S s -> S (sem_stmt st s)
+    | Ast1.V v -> V (sem_var ss v)
+    | Ast1.S s -> S (sem_stmt ss s)
   in
   List.map f block
 
 (* -------------------------------------------------------------------------- *)
 
-and sem_typ st typ = match typ with
+and sem_typ ss typ = match typ with
   | Ast1.Id (_, "Void")   -> Void
   | Ast1.Id (_, "Bool")   -> Bool
   | Ast1.Id (_, "Int")    -> Int
   | Ast1.Id (_, "Float")  -> Float
   | Ast1.Id (_, "String") -> String
-  | Ast1.Id (p, id)       -> let (def, _) = find_record st p id in Record def
-  | Ast1.Array typ        -> Array (sem_typ st typ)
+  | Ast1.Id (p, id)       -> let (def, _) = find_record ss p id in Record def
+  | Ast1.Array typ        -> Array (sem_typ ss typ)
 
 (* -------------------------------------------------------------------------- *)
 
-and sem_stmt st stmt = match stmt with
+and sem_stmt ss stmt = match stmt with
   | Asg (p, lhs, _, exp) ->
-    let lhs = sem_lhs st lhs in
-    let exp = sem_exp st exp in
+    let lhs = sem_lhs ss lhs in
+    let exp = sem_exp ss exp in
     let ok, err = can_be_reassigned lhs in
     if not ok then raise err;
     typecheck p lhs.typ exp.typ;
@@ -224,14 +238,20 @@ and sem_stmt st stmt = match stmt with
     {p = lhs.p; u = Asg (lhs, exp)}
 
   | Call call ->
-    let call = sem_call st call in
+    let call = sem_call ss call in
     {p = call.p; u = Call call}
 
-  | Return (p, None) ->
-    {p = p; u = Ret None}
-  | Return (p, (Some exp)) ->
-    let exp = sem_exp st exp in
-    {p = p; u = Ret (Some exp)}
+  | Return (p, exp) ->
+    let (exp: exp) = match exp with
+    | None -> {p = p; typ = Void; u = LiteralNil}
+    | Some exp -> sem_exp ss exp
+    in
+    let ret = match ss#get_ret with
+    | None -> raise (ErrCompiler "stmt.ret")
+    | Some typ -> typ
+    in
+    typecheck p ret exp.typ;
+    {p = p; u = Ret exp}
 
   | If (exp, block, elseif, else_) -> raise ErrNotImplemented
   | While (exp, block) -> raise ErrNotImplemented
@@ -240,10 +260,10 @@ and sem_stmt st stmt = match stmt with
 
 (* -------------------------------------------------------------------------- *)
 
-and sem_exp st exp = match exp with
+and sem_exp ss exp = match exp with
   | Ast1.Dynamic typ ->
     let p = Lexing.dummy_pos in
-    let typ = sem_typ st typ in
+    let typ = sem_typ ss typ in
     {p = p; typ = typ; u = Dynamic}
 
   | Binary (lexp, op, rexp) -> raise ErrNotImplemented
@@ -257,7 +277,7 @@ and sem_exp st exp = match exp with
   | Ast1.Literal String (p, v) -> {p = p; typ = String; u = LiteralString v}
 
   | Ast1.Literal ArrayL (p, exps) ->
-    let exps = List.map (sem_exp st) exps in
+    let exps = List.map (sem_exp ss) exps in
     let typ = (List.hd exps).typ in
     let same_type typ (exp: exp) = match typecheck p typ exp.typ with
       | exception _ -> false
@@ -268,9 +288,9 @@ and sem_exp st exp = match exp with
       else raise (ErrLiteralArraySameType p)
 
   | Ast1.Literal RecordL ((p, id), fields) ->
-    let (rec_def, rec_fields) = find_record st p id in
+    let (rec_def, rec_fields) = find_record ss p id in
     let f ((p, id), exp) =
-      let exp = sem_exp st exp in
+      let exp = sem_exp ss exp in
       let (field: def) = lookup_record rec_fields id (p, rec_def) in
       let field_typ = match field.u with
         | Val (typ, _) | Var (typ, _) -> typ
@@ -286,18 +306,18 @@ and sem_exp st exp = match exp with
     {p = p; typ = Record rec_def; u = LiteralRecord fields}
 
   | Ast1.Lhs lhs ->
-    let ({p; typ; _} as lhs: lhs) = sem_lhs st lhs in
+    let ({p; typ; _} as lhs: lhs) = sem_lhs ss lhs in
     {p = p; typ = typ; u = Lhs lhs}
 
   | Call call ->
-    let call = sem_call st call in
+    let call = sem_call ss call in
     {p = call.p; typ = call.typ; u = Call call}
 
 (* -------------------------------------------------------------------------- *)
 
-and sem_lhs st lhs = match lhs with
+and sem_lhs ss lhs = match lhs with
   | Id (p, id2 as id1) -> (* id *)
-    let (typ, u) = match st#lookup id2 with
+    let (typ, u) = match ss#lookup id2 with
       | Some ({u = Val (typ, _); _} as def) -> (typ, Id def)
       | Some ({u = Var (typ, _); _} as def) -> (typ, Id def)
       | _ -> raise (ErrUndefinedVariable id1)
@@ -305,8 +325,8 @@ and sem_lhs st lhs = match lhs with
     {p; typ; u}
 
   | Index (p, arr, idx) -> (* arr[idx] *)
-    let arr = sem_exp st arr in
-    let idx = sem_exp st idx in
+    let arr = sem_exp ss arr in
+    let idx = sem_exp ss idx in
     let typ = match arr.typ with
       | Array typ -> typ
       | _ -> raise (ErrExpectedArray lhs)
@@ -314,7 +334,7 @@ and sem_lhs st lhs = match lhs with
     {p = p; typ = typ; u = Index (arr, idx)}
 
   | Field (p, exp, (_, field)) -> (* exp.field *)
-    let exp = sem_exp st exp in
+    let exp = sem_exp ss exp in
     let (rec_def, rec_fields) = match exp.typ with
       | Record ({u = Rec fields; _} as def) -> (def, fields)
       | Record def -> raise @@ ErrExpectedRecord (p, def.u)
@@ -329,9 +349,9 @@ and sem_lhs st lhs = match lhs with
 
 (* -------------------------------------------------------------------------- *)
 
-and sem_call st call = match call with
+and sem_call ss call = match call with
   | Function ((p, id2) as id1, args) ->
-    let (fun_def, params, ret_typ) = match st#lookup id2 with
+    let (fun_def, params, ret_typ) = match ss#lookup id2 with
       | None -> raise (ErrUndefinedFunction id1)
       | Some def ->
         begin match def.u with
@@ -339,7 +359,7 @@ and sem_call st call = match call with
         | _ -> raise @@ ErrExpectedFunction (p, def.u)
         end
     in
-    let args = List.map (sem_exp st) args in
+    let args = List.map (sem_exp ss) args in
     let rec args_vs_params = function
       | [], [] -> ()
       | _, [] -> raise @@ ErrCallTooManyArgs id1
@@ -365,7 +385,7 @@ and sem_call st call = match call with
 and handle_error e =
   let f = sprintf "error in line %d: %s" in
   let (ln, s) = match e with
-    | Symtable.ErrDuplicate (def, {p; id; u; _}) ->
+    | ST.ErrDuplicate (def, {p; id; u; _}) ->
       let kind = match u with
         | Val _ | Var _ -> "variable"
         | Fun _ -> "function"

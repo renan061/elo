@@ -4,13 +4,14 @@
   TYPE CHECKING
   GLOBAL VARIABLES
   FUNCTION DEFINITIONS
+    TODO: traverse paths to see if forgot to insert a return
   RECORD DEFINITIONS
   TODO: BLOCKS & SCOPING
   LOCAL VARIABLES
   STATEMENTS
     ASSIGNMENT
       TODO: COMPOUND ASSIGNMENTS
-    TODO: RETURN
+    RETURN
     TODO: IF
     TODO: WHILE
     TODO: FOR
@@ -773,7 +774,7 @@ let tests = [(
     }
   |}, {|
     DEF FUNCTION f () : VOID {
-      RETURN
+      RETURN VOID(nil)
     }
   (*-------------------------------------------------------------------*) |}); (
   "statements - return - with value", {|
@@ -790,21 +791,21 @@ let tests = [(
       return;
     }
   |}, {|
-    TODO
+    error in line 3: mismatching types: expected Int, got Void
   (*-------------------------------------------------------------------*) |}); (
   "statements - return - with value when expecting Void", {|
     function f {
       return 1;
     }
   |}, {|
-    TODO
+    error in line 3: mismatching types: expected Void, got Int
   (*-------------------------------------------------------------------*) |}); (
   "statements - return - value with the wrong type", {|
     function f: Int {
       return true;
     }
   |}, {|
-    TODO
+    error in line 3: mismatching types: expected Int, got Bool
 (* ------------------------------------------------------------------- *) |}); (
 (* CALLS ------------------------------------------------------------- *)
 (* ------------------------------------------------------------------- *)
@@ -1019,8 +1020,7 @@ and tostring_stmt n (stmt: stmt) = match stmt.u with
     let exp = "\n" ^ (tabs n) ^ exp in
     String.concat " " ["ASG"; lhs; "="] ^ exp
   | Call call -> tostring_call n call
-  | Ret None -> "RETURN"
-  | Ret (Some exp) ->
+  | Ret exp ->
     let exp = tostring_exp n exp in
     "RETURN " ^ exp
 
