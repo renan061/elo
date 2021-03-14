@@ -8,6 +8,7 @@ exception ErrCompiler of string
 
 exception ErrCallNotEnoughArgs of Ast1.id
 exception ErrCallTooManyArgs of Ast1.id
+exception ErrCondType of Lexing.position * typ
 exception ErrExpectedArray of Ast1.lhs
 exception ErrExpectedFunction of Lexing.position * defU
 exception ErrExpectedRecord of Lexing.position * defU
@@ -97,6 +98,10 @@ let rec typecheck p t1 t2 =
   | Array t1, Array t2 -> begin try typecheck p t1 t2 with _ -> raise err end
   | Record id1, Record id2 when id1 = id2 -> ()
   | _ -> raise err
+
+let condcheck p typ = match typ with
+  | Bool -> ()
+  | _ -> raise @@ ErrCondType (p, typ)
 
 let find_record ss p id = match ss#lookup id with
   | None -> raise @@ ErrUndefinedRecord (p, id)
@@ -255,18 +260,31 @@ and sem_stmt ss stmt = match stmt with
 
   | If (p, exp, block, elseifs, else_) ->
     let exp = sem_exp ss exp in
-    typecheck p Bool exp.typ;
+    condcheck p exp.typ;
+    ss#enterblock;
     let block = sem_block ss block in
+    ss#leaveblock;
     let else_ = match (elseifs, else_) with
     | [], None -> None
-    | [], Some block -> Some (sem_block ss block)
+    | [], Some block ->
+      ss#enterblock;
+      let block = sem_block ss block in
+      ss#leaveblock;
+      Some block
     | (p, exp, block) :: elseifs, else_ ->
       let block = Ast1.S (Ast1.If (p, exp, block, elseifs, else_)) in
       Some (sem_block ss [block])
     in
     {p = p; u = If (exp, block, else_)}
 
-  | While (exp, block) -> raise ErrNotImplemented
+  | While (p, exp, block) ->
+    let exp = sem_exp ss exp in
+    condcheck p exp.typ;
+    ss#enterblock;
+    let block = sem_block ss block in
+    ss#leaveblock;
+    {p = p; u = While (exp, block)}
+
   | For (id, range, block) -> raise ErrNotImplemented
   | Block block -> raise ErrNotImplemented
 
@@ -412,6 +430,10 @@ and handle_error e =
       pos_lnum, msg
     | ErrCallTooManyArgs ({pos_lnum; _}, id) ->
       let msg = sprintf "too many arguments in call to '%s'" id in
+      pos_lnum, msg
+    | ErrCondType ({pos_lnum; _}, typ) ->
+      let typ = typ_tostring typ in
+      let msg = sprintf "condition must have type Bool instead of %s" typ in
       pos_lnum, msg
     | ErrExpectedArray lhs -> -33, "a"
     | ErrExpectedFunction ({pos_lnum; _}, def_u) ->

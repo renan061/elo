@@ -53,6 +53,7 @@ and stmtU =
   | Call of call
   | Ret of exp
   | If of exp * block * block option
+  | While of exp * block
 
 and expU =
   | Dynamic

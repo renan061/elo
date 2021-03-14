@@ -40,7 +40,7 @@ and stmt =
   | Return of p * exp option
   (* Compound *)
   | If     of p * exp * block * (p * exp * block) list * block option
-  | While  of exp * block
+  | While  of p * exp * block
   | For    of id * range * block
   | Block  of block
 

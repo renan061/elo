@@ -13,7 +13,7 @@
       TODO: COMPOUND ASSIGNMENTS
     RETURN
     IF
-    TODO: WHILE
+    WHILE
     TODO: FOR
     TODO: BLOCK
   CALLS
@@ -926,7 +926,7 @@ let tests = [(
       if 5.5 {}
     }
   |}, {|
-    error in line 3: mismatching types: expected Bool, got Float
+    error in line 3: condition must have type Bool instead of Float
   (*-------------------------------------------------------------------*) |}); (
   "statements - if - invalid (elseif) condition type", {|
     function main {
@@ -934,7 +934,81 @@ let tests = [(
       elseif "true" {}
     }
   |}, {|
-    error in line 4: mismatching types: expected Bool, got String
+    error in line 4: condition must have type Bool instead of String
+  (*-------------------------------------------------------------------*) |}); (
+  "statements - if - scope", {|
+    function main {
+      var a = 1;
+      if true {
+        val a = 2;
+      } elseif false {
+        val a = 3;
+      } elseif true {
+        val a = 4;
+      } else {
+        val a = 5;
+      }
+    }
+  |}, {|
+    DEF FUNCTION main () : VOID {
+      DEF VAR a : INT =
+        INT(1)
+      IF BOOL(true) {
+        DEF VAL a : INT =
+          INT(2)
+      } ELSE {
+        IF BOOL(false) {
+          DEF VAL a : INT =
+            INT(3)
+        } ELSE {
+          IF BOOL(true) {
+            DEF VAL a : INT =
+              INT(4)
+          } ELSE {
+            DEF VAL a : INT =
+              INT(5)
+          }
+        }
+      }
+    }
+  (*-------------------------------------------------------------------*) |}); (
+  "statements - while - ok", {|
+    function main {
+      while true {
+        val a = 1;
+      }
+    }
+  |}, {|
+    DEF FUNCTION main () : VOID {
+      WHILE BOOL(true) {
+        DEF VAL a : INT =
+          INT(1)
+      }
+    }
+  (*-------------------------------------------------------------------*) |}); (
+  "statements - while - invalid condition type", {|
+    function main {
+      while 1 {}
+    }
+  |}, {|
+    error in line 3: condition must have type Bool instead of Int
+  (*-------------------------------------------------------------------*) |}); (
+  "statements - while - scope", {|
+    function main {
+      var a = 1.0;
+      while true {
+        val a = 2;
+      }
+    }
+  |}, {|
+    DEF FUNCTION main () : VOID {
+      DEF VAR a : FLOAT =
+        FLOAT(1.)
+      WHILE BOOL(true) {
+        DEF VAL a : INT =
+          INT(2)
+      }
+    }
 (* ------------------------------------------------------------------- *) |}); (
 (* CALLS ------------------------------------------------------------- *)
 (* ------------------------------------------------------------------- *)
@@ -1163,6 +1237,11 @@ and tostring_stmt n (stmt: stmt) = match stmt.u with
       let block = tostring_block n block in
       if_ ^ " ELSE " ^ block
     end
+  | While (exp, block) ->
+    let exp = tostring_exp n exp in
+    let n = n + 1 in
+    let block = tostring_block n block in
+    "WHILE " ^ exp ^ " " ^ block
 
 and tostring_exp n (exp: exp) =
   let typ = tostring_typ exp.typ in

@@ -80,7 +80,7 @@ simple_stmt : assignment    { $1              }
             | "return" exp? { Return ($1, $2) }
 
 compound_stmt : "if" exp block elseif* else_? { If    ($1, $2, $3, $4, $5) }
-              | "while" exp block             { While ($2, $3)             }
+              | "while" exp block             { While ($1, $2, $3)         }
               | "for" LID "=" range block     { For   ($2, $4, $5)         }
               | block                         { Block $1                   }
 
