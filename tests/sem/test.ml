@@ -12,7 +12,7 @@
     ASSIGNMENT
       TODO: COMPOUND ASSIGNMENTS
     RETURN
-    TODO: IF
+    IF
     TODO: WHILE
     TODO: FOR
     TODO: BLOCK
@@ -806,6 +806,135 @@ let tests = [(
     }
   |}, {|
     error in line 3: mismatching types: expected Int, got Bool
+  (*-------------------------------------------------------------------*) |}); (
+  "statements - if - (if)", {|
+    function main {
+      if true {
+        val a = 1;
+      }
+    }
+  |}, {|
+    DEF FUNCTION main () : VOID {
+      IF BOOL(true) {
+        DEF VAL a : INT =
+          INT(1)
+      }
+    }
+  (*-------------------------------------------------------------------*) |}); (
+  "statements - if - (if-else)", {|
+    function main {
+      if false {
+        var b = 1.0;
+        b = 1.1;
+      } else {
+        var c = true;
+        c = false;
+      }
+    }
+  |}, {|
+    DEF FUNCTION main () : VOID {
+      IF BOOL(false) {
+        DEF VAR b : FLOAT =
+          FLOAT(1.)
+        ASG ID b: FLOAT =
+          FLOAT(1.1)
+      } ELSE {
+        DEF VAR c : BOOL =
+          BOOL(true)
+        ASG ID c: BOOL =
+          BOOL(false)
+      }
+    }
+  (*-------------------------------------------------------------------*) |}); (
+  "statements - if - (if-elseif)", {|
+    function main {
+      if false {
+      } elseif true {
+      }
+    }
+  |}, {|
+    DEF FUNCTION main () : VOID {
+      IF BOOL(false) {} ELSE {
+        IF BOOL(true) {}
+      }
+    }
+  (*-------------------------------------------------------------------*) |}); (
+  "statements - if - (if-elseifs)", {|
+    function main {
+      if false {
+      } elseif true {
+      } elseif false {
+      } elseif true {
+      }
+    }
+  |}, {|
+    DEF FUNCTION main () : VOID {
+      IF BOOL(false) {} ELSE {
+        IF BOOL(true) {} ELSE {
+          IF BOOL(false) {} ELSE {
+            IF BOOL(true) {}
+          }
+        }
+      }
+    }
+  (*-------------------------------------------------------------------*) |}); (
+  "statements - if - (if-elseif-else)", {|
+    function main {
+      var a: Int;
+      if true {
+        a = 1;
+      } elseif false {
+        a = 2;
+      } else {
+        a = 3;
+      }
+    }
+  |}, {|
+    DEF FUNCTION main () : VOID {
+      DEF VAR a : INT =
+        ZEROVALUE INT
+      IF BOOL(true) {
+        ASG ID a: INT =
+          INT(1)
+      } ELSE {
+        IF BOOL(false) {
+          ASG ID a: INT =
+            INT(2)
+        } ELSE {
+          ASG ID a: INT =
+            INT(3)
+        }
+      }
+    }
+  (*-------------------------------------------------------------------*) |}); (
+  "statements - if - if inside an if", {|
+    function main {
+      if false {
+        if true {
+        }
+      }
+    }
+  |}, {|
+    DEF FUNCTION main () : VOID {
+      IF BOOL(false) {
+        IF BOOL(true) {}
+      }
+    }
+  (*-------------------------------------------------------------------*) |}); (
+  "statements - if - invalid (if) condition type", {|
+    function main {
+      if 5.5 {}
+    }
+  |}, {|
+    error in line 3: mismatching types: expected Bool, got Float
+  (*-------------------------------------------------------------------*) |}); (
+  "statements - if - invalid (elseif) condition type", {|
+    function main {
+      if true {}
+      elseif "true" {}
+    }
+  |}, {|
+    error in line 4: mismatching types: expected Bool, got String
 (* ------------------------------------------------------------------- *) |}); (
 (* CALLS ------------------------------------------------------------- *)
 (* ------------------------------------------------------------------- *)
@@ -1001,7 +1130,7 @@ and tostring_block n block = match block with
       | Ast2.S s -> tostring_stmt n s
     in
     let g e = tabs n ^ f e in
-    "{\n" ^ String.concat "\n" (List.map g block) ^ "\n}"
+    "{\n" ^ String.concat "\n" (List.map g block) ^ "\n" ^ (tabs (n - 1)) ^ "}"
 
 and tostring_typ = function
   | Void      -> "VOID"
@@ -1023,6 +1152,17 @@ and tostring_stmt n (stmt: stmt) = match stmt.u with
   | Ret exp ->
     let exp = tostring_exp n exp in
     "RETURN " ^ exp
+  | If (exp, block, else_) ->
+    let exp = tostring_exp n exp in
+    let n = n + 1 in
+    let block = tostring_block n block in
+    let if_ = "IF " ^ exp ^ " " ^ block in
+    begin match else_ with
+    | None -> if_
+    | Some block ->
+      let block = tostring_block n block in
+      if_ ^ " ELSE " ^ block
+    end
 
 and tostring_exp n (exp: exp) =
   let typ = tostring_typ exp.typ in

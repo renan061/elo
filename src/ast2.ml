@@ -52,6 +52,7 @@ and stmtU =
   | Asg of lhs * exp
   | Call of call
   | Ret of exp
+  | If of exp * block * block option
 
 and expU =
   | Dynamic

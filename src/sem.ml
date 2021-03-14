@@ -253,7 +253,19 @@ and sem_stmt ss stmt = match stmt with
     typecheck p ret exp.typ;
     {p = p; u = Ret exp}
 
-  | If (exp, block, elseif, else_) -> raise ErrNotImplemented
+  | If (p, exp, block, elseifs, else_) ->
+    let exp = sem_exp ss exp in
+    typecheck p Bool exp.typ;
+    let block = sem_block ss block in
+    let else_ = match (elseifs, else_) with
+    | [], None -> None
+    | [], Some block -> Some (sem_block ss block)
+    | (p, exp, block) :: elseifs, else_ ->
+      let block = Ast1.S (Ast1.If (p, exp, block, elseifs, else_)) in
+      Some (sem_block ss [block])
+    in
+    {p = p; u = If (exp, block, else_)}
+
   | While (exp, block) -> raise ErrNotImplemented
   | For (id, range, block) -> raise ErrNotImplemented
   | Block block -> raise ErrNotImplemented

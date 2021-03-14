@@ -39,7 +39,7 @@ and stmt =
   | Call   of call
   | Return of p * exp option
   (* Compound *)
-  | If     of exp * block * (exp * block) list * block option
+  | If     of p * exp * block * (p * exp * block) list * block option
   | While  of exp * block
   | For    of id * range * block
   | Block  of block

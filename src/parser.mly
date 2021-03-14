@@ -79,10 +79,10 @@ simple_stmt : assignment    { $1              }
             | call          { Call   $1       }
             | "return" exp? { Return ($1, $2) }
 
-compound_stmt : "if" exp block elseif* else_? { If    ($2, $3, $4, $5) }
-              | "while" exp block             { While ($2, $3)         }
-              | "for" LID "=" range block     { For   ($2, $4, $5)     }
-              | block                         { Block $1               }
+compound_stmt : "if" exp block elseif* else_? { If    ($1, $2, $3, $4, $5) }
+              | "while" exp block             { While ($2, $3)             }
+              | "for" LID "=" range block     { For   ($2, $4, $5)         }
+              | block                         { Block $1                   }
 
 assignment : lhs op exp { Asg (fst $2, $1, snd $2, $3) }
 %inline op : "="        { ($1, AsgSimple)              }
@@ -92,8 +92,8 @@ assignment : lhs op exp { Asg (fst $2, $1, snd $2, $3) }
            | "/="       { ($1, AsgDiv)                 }
 
 (* auxiliary to "if" in compound_stmt *)
-elseif : "elseif" exp block { ($2, $3) }
-else_  : "else"       block { $2       }
+elseif : "elseif" exp block { ($1, $2, $3) }
+else_  : "else"       block { $2           }
 
 range : exp arrow exp { Range ($1, $2, $3) }
 %inline arrow : "->"  { RightExcluding     }
